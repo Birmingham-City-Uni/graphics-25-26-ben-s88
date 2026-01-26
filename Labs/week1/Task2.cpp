@@ -1,6 +1,17 @@
 #include <iostream>
 #include <lodepng.h>
 
+unsigned int width, height;
+const int nChannels = 4;
+
+void setPixel(std::vector<uint8_t>* imgBuffer, int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+	int pixelIdx = x + y * width;
+	(*imgBuffer)[pixelIdx * nChannels + 0] = r; // Set red pixel values to 0
+	(*imgBuffer)[pixelIdx * nChannels + 1] = g; // Set green pixel values to 255 (full brightness)
+	(*imgBuffer)[pixelIdx * nChannels + 2] = b; // Set blue pixel values to 255 (full brightness)
+	(*imgBuffer)[pixelIdx * nChannels + 3] = a;
+}
 
 int main()
 {
@@ -8,7 +19,6 @@ int main()
 	std::string outputFilename = "output_bunny.png";
 
 	std::vector<uint8_t> imageBuffer;
-	unsigned int width, height;
 	lodepng::decode(imageBuffer, width, height, inputFilename);
 	
 	// *** Tasks ***
@@ -19,12 +29,38 @@ int main()
 	// If you'd like, you can use the setPixel function you wrote in the previous task.
 	// The code below reduces the brightness of the image by 0.5x, as an example.
 
-	for(int y = 0; y < height; ++y) 
+	/*for (int y = 0; y < height; ++y)
 		for (int x = 0; x < width; ++x) 
 			for (int c = 0; c < 3; ++c) {
 				int pixelIdx = x + y * width;
 				imageBuffer[pixelIdx * 4 + c] *= 0.5;
+			}*/
+
+	/*for (int y = 0; y < height; ++y)
+	{
+		for (int x = 0; x < width; ++x)
+		{
+			for (int c = 0; c < 3; ++c) {
+				int pixelIdx = x + y * width;
+				imageBuffer[pixelIdx * 4 + c] = 255 - imageBuffer[pixelIdx * 4 + c];
 			}
+		}
+	}*/
+
+	for (int y = 0; y < height; ++y)
+	{
+		for (int x = 0; x < width; ++x)
+		{
+			if (x % 4 == 0)
+			{
+				int pixelIdx = x + y * width;
+				setPixel(&imageBuffer, x, y, imageBuffer[pixelIdx * 4], imageBuffer[pixelIdx * 4 + 1], imageBuffer[pixelIdx * 4 + 2], imageBuffer[pixelIdx * 4 + 3]);
+				setPixel(&imageBuffer, x + 1, y, imageBuffer[pixelIdx * 4], imageBuffer[pixelIdx * 4 + 1], imageBuffer[pixelIdx * 4 + 2], imageBuffer[pixelIdx * 4 + 3]);
+				setPixel(&imageBuffer, x + 2, y, imageBuffer[pixelIdx * 4], imageBuffer[pixelIdx * 4 + 1], imageBuffer[pixelIdx * 4 + 2], imageBuffer[pixelIdx * 4 + 3]);
+				setPixel(&imageBuffer, x + 3, y, imageBuffer[pixelIdx * 4], imageBuffer[pixelIdx * 4 + 1], imageBuffer[pixelIdx * 4 + 2], imageBuffer[pixelIdx * 4 + 3]);
+			}
+		}
+	}
 
 	// Once you have tested this code, comment out the for loops above and try the following tasks:
 	// * Task 1: Try making a *negative* of the input image. Pixels that are bright in the input
