@@ -1,13 +1,24 @@
 #include <iostream>
+#include <cmath>
 #include <lodepng.h>
 
+const int width = 1920, height = 1080;
+const int nChannels = 4;
+
+void setPixel(std::vector<uint8_t> *imgBuffer, int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+	int pixelIdx = x + y * width;
+	(*imgBuffer)[pixelIdx * nChannels + 0] = r; // Set red pixel values to 0
+	(*imgBuffer)[pixelIdx * nChannels + 1] = g; // Set green pixel values to 255 (full brightness)
+	(*imgBuffer)[pixelIdx * nChannels + 2] = b; // Set blue pixel values to 255 (full brightness)
+	(*imgBuffer)[pixelIdx * nChannels + 3] = a;
+}
 
 int main()
 {
 	std::string outputFilename = "output.png";
 
-	const int width = 1920, height = 1080;
-	const int nChannels = 4;
+	
 
 	// Setting up an image buffer
 	// This std::vector has one 8-bit value for each pixel in each row and column of the image, and
@@ -16,15 +27,33 @@ int main()
 	std::vector<uint8_t> imageBuffer(height*width*nChannels);
 
 	// This for loop sets all the pixels of the image to a cyan colour. 
-	for(int y = 0; y < height; ++y) 
+
+	for (int y = 0; y < height; ++y)
 		for (int x = 0; x < width; ++x) {
-			int pixelIdx = x + y * width;
-			imageBuffer[pixelIdx * nChannels + 0] = 0; // Set red pixel values to 0
-			imageBuffer[pixelIdx * nChannels + 1] = 255; // Set green pixel values to 255 (full brightness)
-			imageBuffer[pixelIdx * nChannels + 2] = 255; // Set blue pixel values to 255 (full brightness)
-			imageBuffer[pixelIdx * nChannels + 3] = 255; // Set alpha (transparency) pixel values to 255 (fully opaque)
+			if (y < height/2)
+			{
+				setPixel(&imageBuffer, x, y, 0, 255, 0, 255);
+			}
+			else
+			{
+				setPixel(&imageBuffer, x, y, 0, 255, 255, 255);
+			}
 		}
 
+
+	for(int y = 0; y < height; ++y) 
+		for (int x = 0; x < width; ++x) {
+			if (sqrt(pow(x - width / 2, 2) + pow(y - height / 2, 2)) < 300)
+			{
+				setPixel(&imageBuffer, x, y, 255, rand() & 255, rand() & 255, 255);
+			}
+			else
+			{
+				setPixel(&imageBuffer, x, y, rand() & 255, rand() & 255, rand() & 255, 255);
+			}
+		}
+
+	std::cout << imageBuffer.size();
 	/// *** Lab Tasks ***
 	// * Task 1: Try adapting the code above to set the lower half of the image to be a green colour.
 	// * Task 2: Doing the maths above to work out indices is a bit annoying! Write your own setPixel function.
@@ -46,6 +75,12 @@ int main()
 	//           occupied by the image buffer (this is based on the width, height and number of channels).
 	//           Try setting the pixels to random values (use rand() and the % operator). What is the 
 	//           compression ratio now, and why do you think this is?
+	/*
+	* The image buffer vector has a length of 8.2 million 8 bit values when the circle is drawn and the file is 2.7kb
+	* 
+	* when using the rand funcion for each of the rgba values the file size is instead 5.9mb because the lossless compression algorithm is less effective when
+	* there is less solid groups of colours together
+	*/
 
 
 	// *** Encoding image data ***
