@@ -19,7 +19,12 @@ int main()
 	std::string outputFilename = "output_bunny.png";
 
 	std::vector<uint8_t> imageBuffer;
+	
 	lodepng::decode(imageBuffer, width, height, inputFilename);
+
+	std::vector <uint8_t> outputBuffer;
+
+
 	
 	// *** Tasks ***
 	// This code loads an image from a png file. This is an image of the famous 
@@ -47,7 +52,7 @@ int main()
 		}
 	}*/
 
-	for (int y = 0; y < height; ++y)
+	/*for (int y = 0; y < height; ++y)
 	{
 		for (int x = 0; x < width; ++x)
 		{
@@ -58,6 +63,30 @@ int main()
 				setPixel(&imageBuffer, x + 1, y, imageBuffer[pixelIdx * 4], imageBuffer[pixelIdx * 4 + 1], imageBuffer[pixelIdx * 4 + 2], imageBuffer[pixelIdx * 4 + 3]);
 				setPixel(&imageBuffer, x + 2, y, imageBuffer[pixelIdx * 4], imageBuffer[pixelIdx * 4 + 1], imageBuffer[pixelIdx * 4 + 2], imageBuffer[pixelIdx * 4 + 3]);
 				setPixel(&imageBuffer, x + 3, y, imageBuffer[pixelIdx * 4], imageBuffer[pixelIdx * 4 + 1], imageBuffer[pixelIdx * 4 + 2], imageBuffer[pixelIdx * 4 + 3]);
+			}
+		}
+	}*/
+
+	for (int y = 0; y < height; ++y)
+	{
+		for (int x = 0; x < width; ++x)
+		{
+			if (x % 2 == 0 && y % 2 == 0)
+			{
+				int pixelIdx = x + y * width;
+				
+				int r = imageBuffer[pixelIdx * 4] + imageBuffer[(pixelIdx + 1) * 4] + imageBuffer[(pixelIdx + width) * 4] + imageBuffer[(pixelIdx + width + 1) * 4];
+				r /= 4;
+				int g = imageBuffer[pixelIdx * 4 + 1] + imageBuffer[(pixelIdx + 1) * 4 + 1] + imageBuffer[(pixelIdx + width) * 4 + 1] + imageBuffer[(pixelIdx + width + 1) * 4 + 1];
+				g /= 4;
+				int b = imageBuffer[pixelIdx * 4 + 2] + imageBuffer[(pixelIdx + 1) * 4 + 2] + imageBuffer[(pixelIdx + width) * 4 + 2] + imageBuffer[(pixelIdx + width + 1) * 4 + 2];
+				b /= 4;
+
+				outputBuffer.push_back(r);
+				outputBuffer.push_back(g);
+				outputBuffer.push_back(b);
+				outputBuffer.push_back(255);
+
 			}
 		}
 	}
@@ -73,7 +102,7 @@ int main()
 	//           do the averaging maths.
 
 	int errorCode;
-	errorCode = lodepng::encode(outputFilename, imageBuffer, width, height);
+	errorCode = lodepng::encode(outputFilename, outputBuffer, width / 2, height / 2);
 	if (errorCode) { // check the error code, in case an error occurred.
 		std::cout << "lodepng error encoding image: " << lodepng_error_text(errorCode) << std::endl;
 		return errorCode;
