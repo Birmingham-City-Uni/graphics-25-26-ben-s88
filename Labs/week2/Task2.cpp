@@ -26,9 +26,18 @@ void drawLine(std::vector<uint8_t>& image, int width, int height, int startX, in
 	// *** YOUR CODE HERE
 	//Step 1: work out the gradient
 	float gradient;
+	gradient = (endY - startY) / (endX - startX);
 
 	// Step 2: check if it's steep (i.e. absolute value bigger than 1;)
 	bool steep;
+	if (abs(gradient) > 1)
+	{
+		steep = false;
+	}
+	else
+	{
+		steep = true;
+	}
 
 	if (steep) {
 		// Step 3: The steep version of the code, iterating over Y
@@ -37,7 +46,10 @@ void drawLine(std::vector<uint8_t>& image, int width, int height, int startX, in
 
 		// Now, iterate from startY to endY. 
 		for (int y = startY; y <= endY; ++y) {
-			// Draw the line, following the formula!
+			int c = startY - gradient * startX;
+			int x = (y - c) / gradient;
+
+			setPixel(image, x, y, width, height, 255, 255, 255);
 		}
 	}
 	else {
@@ -47,7 +59,10 @@ void drawLine(std::vector<uint8_t>& image, int width, int height, int startX, in
 
 		// Now, iterate from startY to endY. 
 		for (int x = startX; x <= endX; ++x) {
-			// Draw the line, following the formula!
+			int c = startY - gradient * startX;
+			int y = gradient * x + c;
+
+			setPixel(image, x, y, width, height, 255, 255, 255);
 		}
 	}
 }
@@ -88,7 +103,7 @@ int main()
 		std::stringstream lineSS(line.c_str());
 		char lineStart;
 		lineSS >> lineStart;
-		char ignoreChar;
+		char ignoreChar = '/';
 		if (lineStart == 'v') {
 			Vector3 v;
 			for (int i = 0; i < 3; ++i) lineSS >> v[i];
@@ -100,7 +115,16 @@ int main()
 		if (lineStart == 'f') {
 
 			std::vector<unsigned int> face;
-			// *** YOUR CODE HERE ***
+			std::string x;
+
+			for (int i = 0; i < 3; i++)
+			{
+				lineSS >> x;
+				char *c;
+				x.copy(c, 0, x.find(ignoreChar) - 1);
+				face.push_back(*c);
+			}
+			faces.push_back(face);
 			// This time we care about faces!
 			// Load this face from the line, pushing it back into the list of faces.
 			// Be careful to ignore the "/" characters, and the extra texture and normal indices.
@@ -113,6 +137,13 @@ int main()
 
 		// First, load the vertices, and resize them like we did in Task1.cpp
 		// Then, call DrawLine three times, to draw each side of the triangle!
+
+		for (auto& v : vertices) {
+			int x = (v[0] + 1) / 2 * 512;
+			int y = (-v[1] + 1) / 2 * 512;
+
+			drawLine(imageBuffer, width, height, );
+		}
 	}
 
 	// *** Encoding image data ***
