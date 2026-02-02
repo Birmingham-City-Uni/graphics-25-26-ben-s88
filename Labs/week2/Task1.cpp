@@ -62,8 +62,21 @@ int main()
 	std::string line;
 	while (!bunnyFile.eof())
 	{
+		
 		std::getline(bunnyFile, line);
-		// *** YOUR CODE HERE ***
+		std::stringstream lineSS(line.c_str());
+		char startChar;
+		
+		lineSS >> startChar;
+		if (startChar == 'v')
+		{
+			Vector3 v;
+			for (int i = 0; i < 3; i++)
+			{
+				lineSS >> v[i];
+			}
+			vertices.push_back(v);
+		}
 
 		// Process each line of the file
 		// Load it into a new Vector3, if the line starts with a V
@@ -82,7 +95,11 @@ int main()
 		//         your vertices towards the centre of the screen, and multiply by a value (about 200 or so) to make the mesh
 		//         big enough to see.
 
-		// *** YOUR CODE HERE ***
+
+		int x = (v[0] + 1) /2 * 512;
+		int y = (-v[1] + 1) /2 * 512;
+		std::cout << x << " " << y << std::endl;
+		setPixel(imageBuffer, x, y, width, height, 255, 255, 255);
 	}
 
 
