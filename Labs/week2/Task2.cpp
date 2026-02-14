@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include "Vector3.hpp"
+#include <string>
 
 // The goal for this lab is to draw a triangle mesh loaded from an OBJ file from scratch,
 // building on the image drawing code from last week's lab.
@@ -26,27 +27,41 @@ void drawLine(std::vector<uint8_t>& image, int width, int height, int startX, in
 	// *** YOUR CODE HERE
 	//Step 1: work out the gradient
 	float gradient;
-	gradient = (endY - startY) / (endX - startX);
-
-	// Step 2: check if it's steep (i.e. absolute value bigger than 1;)
-	bool steep;
-	if (abs(gradient) > 1)
+	if (endX - startX == 0)
 	{
-		steep = false;
+		gradient = 0;
 	}
 	else
 	{
+		gradient = (float)(endY - startY) / (endX - startX);
+	}
+	
+
+	// Step 2: check if it's steep (i.e. absolute value bigger than 1;)
+	bool steep;
+	if (std::fabs(gradient) > 1)
+	{
 		steep = true;
+	}
+	else
+	{
+		steep = false;
 	}
 
 	if (steep) {
 		// Step 3: The steep version of the code, iterating over Y
 		// First, make sure that startY is less than endY. 
 		// If they're in the wrong order, swap both X and Y.
+		if (startY > endY)
+		{
+			std::swap(startX, endX);
+			std::swap(startY, endY);
+		}
 
 		// Now, iterate from startY to endY. 
-		for (int y = startY; y <= endY; ++y) {
-			int c = startY - gradient * startX;
+		for (int y = startY; y <= endY; ++y) 
+		{
+			float c = startY - gradient * startX;
 			int x = (y - c) / gradient;
 
 			setPixel(image, x, y, width, height, 255, 255, 255);
@@ -56,10 +71,16 @@ void drawLine(std::vector<uint8_t>& image, int width, int height, int startX, in
 		// Step 4: The shallow version of the code, iterating over X
 		// First, make sure that startx is less than endX. 
 		// If they're in the wrong order, swap both X and Y.
+		if (startX > endX)
+		{
+			std::swap(startX, endX);
+			std::swap(startY, endY);
+		}
 
 		// Now, iterate from startY to endY. 
-		for (int x = startX; x <= endX; ++x) {
-			int c = startY - gradient * startX;
+		for (int x = startX; x <= endX; ++x) 
+		{
+			float c = startY - gradient * startX;
 			int y = gradient * x + c;
 
 			setPixel(image, x, y, width, height, 255, 255, 255);
@@ -120,9 +141,9 @@ int main()
 			for (int i = 0; i < 3; i++)
 			{
 				lineSS >> x;
-				char *c;
-				x.copy(c, 0, x.find(ignoreChar) - 1);
-				face.push_back(*c);
+				x.resize(x.find_first_of(ignoreChar));
+				
+				face.push_back(std::stoul(x) - 1);
 			}
 			faces.push_back(face);
 			// This time we care about faces!
@@ -138,12 +159,18 @@ int main()
 		// First, load the vertices, and resize them like we did in Task1.cpp
 		// Then, call DrawLine three times, to draw each side of the triangle!
 
-		for (auto& v : vertices) {
-			int x = (v[0] + 1) / 2 * 512;
-			int y = (-v[1] + 1) / 2 * 512;
+		int xPoint1 = (vertices[faces[f][0]][0] + 1) / 2 * 512;
+		int yPoint1 = (-vertices[faces[f][0]][1] + 1) / 2 * 512;
 
-			drawLine(imageBuffer, width, height, );
-		}
+		int xPoint2 = (vertices[faces[f][1]][0] + 1) / 2 * 512;
+		int yPoint2 = (-vertices[faces[f][1]][1] + 1) / 2 * 512;
+
+		int xPoint3 = (vertices[faces[f][2]][0] + 1) / 2 * 512;
+		int yPoint3 = (-vertices[faces[f][2]][1] + 1) / 2 * 512;
+	
+		drawLine(imageBuffer, width, height, xPoint1, yPoint1, xPoint2, yPoint2);
+		drawLine(imageBuffer, width, height, xPoint1, yPoint1, xPoint3, yPoint3);
+		drawLine(imageBuffer, width, height, xPoint2, yPoint2, xPoint3, yPoint3);
 	}
 
 	// *** Encoding image data ***

@@ -4,6 +4,7 @@
 #include <sstream>
 #include "Vector3.hpp"
 #include "Vector2.hpp"
+#include <algorithm>
 
 // The goal for this lab is to draw a triangle mesh loaded from an OBJ file from scratch.
 // This time, we'll draw the mesh as a solid object, rather than just a wireframe or collection
@@ -35,17 +36,28 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 	// YOUR CODE HERE
 	int minX = 0, minY = 0, maxX = 0, maxY = 0;
 
+	minX = std::min({ p0.x(), p1.x(), p2.x() });
+	minY = std::min({ p0.y(), p1.y(), p2.y() });
+
+	maxX = std::max({ p0.x(), p1.x(), p2.x() });
+	maxY = std::max({ p0.y(), p1.y(), p2.y() });
+
 	// Check your minX, minY, maxX and maxY values don't lie outside the image!
 	// This would cause errors if you attempt to draw there.
 	// That is, clamp these values so that 0 <= x < width and 0 <= y < height.
 
 	// YOUR CODE HERE
+	minX = std::clamp(minX, 0, width);
+	minY = std::clamp(minY, 0, height);
+
+	maxX = std::clamp(maxX, 0, width);
+	maxY = std::clamp(maxY, 0, height);
 
 	// Find vectors going along two edges of the triangle
 	// from p0 to p1, and from p1 to p2.
 
 	// YOUR CODE HERE
-	Vector2 edge1, edge2;
+	Vector2 edge1(p1.x() - p0.x(), p1.y() - p0.y()), edge2(p2.x() - p1.x(), p2.y() - p1.y());
 
 	// Find the area of the triangle using a cross product.
 	// Optional: You can use the sign of the cross product to see if this triangle is facing towards
@@ -54,7 +66,11 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 	// for your coursework!)
 
 	// YOUR CODE HERE
-	float triangleArea = 0.0f;
+	float triangleArea = edge1.cross(edge2) / 2;
+	if (triangleArea < 0)
+	{
+		return;
+	}
 
 	// Now let's actually draw the triangle!
 	// We'll do a for loop over all pixels in the bounding box.
@@ -63,28 +79,32 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 		for (int y = minY; y <= maxY; ++y) {
 			// Find the barycentric coordinates of the triangle!
 
-			Vector2 p(x, y); // This is the 2D location of the pixel we are drawing.
+			Vector2 p(x, y); // This is the 2D location of the pixel we are drawing
 
 			// Find the area of each of the three sub-triangles, using a cross product
 			// YOUR CODE HERE - set the value of these three area variables.
-			float a0;
-			float a1;
-			float a2;
+			float a0 = fabs(Vector2(p0.x() - p.x(), p0.y() - p.y()).cross(Vector2(p1.x() - p.x(), p1.y() - p.y()))) / 2;
+			float a1 = fabs(Vector2(p0.x() - p.x(), p0.y() - p.y()).cross(Vector2(p2.x() - p.x(), p2.y() - p.y()))) / 2;
+			float a2 = fabs(Vector2(p1.x() - p.x(), p1.y() - p.y()).cross(Vector2(p2.x() - p.x(), p2.y() - p.y()))) / 2;
 
 			// Find the barycentrics b0, b1, and b2 by dividing by triangle area.
 			// YOUR CODE HERE - do the division and find b0, b1, b2.
-			float b0;
-			float b1;
-			float b2;
+			float b0 = a0 / triangleArea;
+			float b1 = a1 / triangleArea;
+			float b2 = a2 / triangleArea;
 
 			// Check if the sum of b0, b1, b2 is bigger than 1 (or ideally a number just over 1 
 			// to account for numerical error).
 			// If it's bigger, skip to the next pixel as we are outside the triangle.
 			// YOUR CODE HERE
-			float sum;
+			float sum = b0 + b1 + b2;
 
 			// Now we're sure we're inside the triangle, and we can draw this pixel!
-			setPixel(image, x, y, width, height, r, g, b, a);
+			if (sum <= 1.01f)
+			{
+				setPixel(image, x, y, width, height, r, g, b, a);
+			}
+			
 		}
 }
 
@@ -143,7 +163,7 @@ int main()
 
 		// Task 3: Draw the bunny!
 		// Now you've finished your triangle drawing function, you'll see a red bunny, drawn using the code below:
-		drawTriangle(imageBuffer, width, height, p0, p1, p2, 255, 0, 0, 255);
+		//drawTriangle(imageBuffer, width, height, p0, p1, p2, 255, 0, 0, 255);
 
 		// This is a bit boring. Try replacing this code to draw two different bunny types.
 
@@ -152,6 +172,7 @@ int main()
 		// the rand() function in C++.
 		// Hint: Remember rand() returns an int, but we want our colour values to lie between 0 and 255.
 		// How can we make sure our random r, g, b values stick to the right range?
+		//drawTriangle(imageBuffer, width, height, p0, p1, p2, rand() % 256, rand() % 256, rand() % 256, 255);
 
 		// Bunny 2: (Sort of) Diffuse Lighting Bunny
 		// For the final task we'll do a bit of a preview of session 5 on diffuse lighting.
@@ -163,6 +184,14 @@ int main()
 		// Once you have your normal, take the dot product with (0,0,1). This will effectively measure how much
 		// the normal points down the positive z-axis.
 		// Use this value to set the brightness of the triangle (remember to scale it back to the [0,255] range).
+
+		Vector3 cross = Vector3(vertices[face[0]] - vertices[face[1]]).cross(vertices[face[2]] - vertices[face[1]]);
+
+		cross = cross.normalized();
+		float shade = cross.dot(Vector3(0, 0, 1));
+		shade = std::clamp(shade, 0.0f, 1.0f);
+
+		drawTriangle(imageBuffer, width, height, p0, p1, p2, shade * 255, shade * 255, shade * 255, 255);
 	}
 
 
