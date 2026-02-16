@@ -115,9 +115,10 @@ void drawMesh(std::vector<unsigned char>& image, const Mesh& mesh,
 		// The matrix is 4x4, and the v0, v1, v2 are 3D! You'll need to convert them to 4D 
 		// homogeneous vectors first (add a 1 in the w component).
 		// You can use the vec3ToVec4 function above to do this.
-		tv0 = Eigen::Vector4f::Zero();
-		tv1 = Eigen::Vector4f::Zero();
-		tv2 = Eigen::Vector4f::Zero();
+
+		tv0 = transform * vec3ToVec4(v0);
+		tv1 = transform * vec3ToVec4(v1);
+		tv2 = transform * vec3ToVec4(v2);
 
 		Eigen::Vector2f p0(tv0.x() * 250 + width / 2, -tv0.y() * 250 + height / 2);
 		Eigen::Vector2f p1(tv1.x() * 250 + width / 2, -tv1.y() * 250 + height / 2);
@@ -142,15 +143,21 @@ void drawMesh(std::vector<unsigned char>& image, const Mesh& mesh,
 // Implement this function that makes a translation matrix
 Eigen::Matrix4f translationMatrix(const Eigen::Vector3f& t)
 {
-	// *** Your code here ***
-	return Eigen::Matrix4f::Identity();
+	Eigen::Matrix4f m = Eigen::Matrix4f::Identity();
+	Eigen::Matrix<float, 4, 1> t4;
+	t4 << t.x(), t.y(), t.z(), 1;
+	m.block<4, 1>(0, 3) = t4;
+	std::cout << "translation matrix: " << m;
+	return m;
 }
 
 // Implement this function that makes a uniform scaling matrix
 Eigen::Matrix4f scaleMatrix(float s)
 {
+	Eigen::Matrix4f m = Eigen::Matrix4f::Identity() * s;
+	m(3, 3) = 1.0f;
 	// *** Your code here ***
-	return Eigen::Matrix4f::Identity();
+	return m;
 }
 
 // Implement this function that makes a rotation matrix around the y
@@ -158,8 +165,14 @@ Eigen::Matrix4f scaleMatrix(float s)
 // Hint check: https://en.wikipedia.org/wiki/Rotation_matrix#In_three_dimensions
 Eigen::Matrix4f rotateYMatrix(float theta)
 {
+	Eigen::Matrix4f ry;
+	ry << cosf(theta), 0, sinf(theta),0,
+		0, 1, 0, 0,
+		-sinf(theta), 0, cosf(theta), 0,
+		0, 0, 0, 1;
+
 	// *** Your code here ***
-	return Eigen::Matrix4f::Identity();
+	return ry;
 }
 
 int main()
@@ -186,6 +199,7 @@ int main()
 
 	// Subtask: Try making a 2D vector of ints using the template <> syntax.
 	// Is there a handy typedef for this too?
+	//Eigen::Vector2 v2;
 
 	// Matrices
 	// For the matrix sizes we'll commonly use (3x3 and 4x4) Eigen has typedefs for these too:
@@ -216,6 +230,8 @@ int main()
 		0, 4, 0,
 		0, 0, 1;
 	Eigen::Matrix3f myInverse = myThreeByThreeMatrix.inverse();
+
+	std::cout << "matrix time inverse: " << myInverse * myThreeByThreeMatrix;
 
 	// Subtask 3: Try multiplying myThreeByThreeMatrix by myInverse
 	// Print out the result.
@@ -257,9 +273,11 @@ int main()
 
 	std::string bunnyFilename = "../models/stanford_bunny_simplified.obj";
 	std::string dragonFilename = "../models/stanford_dragon_simplified.obj";
+	std::string jamesFilename = "../models/james.obj";
 
 	Mesh bunnyMesh = loadMeshFile(bunnyFilename);
 	Mesh dragonMesh = loadMeshFile(dragonFilename);
+	Mesh jamesMesh = loadMeshFile(jamesFilename);
 
 
 	// ============ TASK 3 =================
@@ -270,8 +288,9 @@ int main()
 	// TIP: Think about the order of your transforms. Do you want to rotate first,
 	//      scale first, or translate first? Does the order matter?
 
-	Eigen::Matrix4f bunnyTransform = Eigen::Matrix4f::Identity();
-	Eigen::Matrix4f dragonTransform = Eigen::Matrix4f::Identity();
+	Eigen::Matrix4f bunnyTransform = Eigen::Matrix4f::Identity() * translationMatrix(Eigen::Vector3f(-0.5f, -0.5f, 0));
+	Eigen::Matrix4f dragonTransform = Eigen::Matrix4f::Identity() * translationMatrix(Eigen::Vector3f(0.25f, 0.25f, 0)) * scaleMatrix(1.25f) * rotateYMatrix(180 * M_PI / 180);
+	Eigen::Matrix4f jamesTransform = Eigen::Matrix4f::Identity() * translationMatrix(Eigen::Vector3f(0, -0.8f, 0)) * scaleMatrix(0.9f);
 
 	// =========== TASK 4 ==============
 	// Prepare your own mesh in blender, exporting as OBJ
@@ -280,6 +299,7 @@ int main()
 
 	drawMesh(imageBuffer, bunnyMesh, Eigen::Vector3f(0, 1, 0), bunnyTransform, width, height);
 	drawMesh(imageBuffer, dragonMesh, Eigen::Vector3f(0, 1, 1), dragonTransform, width, height);
+	drawMesh(imageBuffer, jamesMesh, Eigen::Vector3f(1, 0, 0), jamesTransform, width, height);
 
 	// *** Encoding image data ***
 	// PNG files are compressed to save storage space. 
