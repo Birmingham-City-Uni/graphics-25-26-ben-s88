@@ -147,7 +147,6 @@ Eigen::Matrix4f translationMatrix(const Eigen::Vector3f& t)
 	Eigen::Matrix<float, 4, 1> t4;
 	t4 << t.x(), t.y(), t.z(), 1;
 	m.block<4, 1>(0, 3) = t4;
-	std::cout << "translation matrix: " << m;
 	return m;
 }
 
