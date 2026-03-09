@@ -35,9 +35,14 @@ Eigen::Matrix4f projectionMatrix(int height, int width, float horzFov = 70.f*M_P
 
 	// Make a projection matrix following the formulation in the lecture slides, and using the provided parameters.
 	// First, work out vertical FoV based on the horizontal FoV:
-	float vertFov = 0.f;
+	float vertFov = (horzFov * height) / width;
 	// Now construct the matrix.
 	Eigen::Matrix4f projection;
+	projection <<
+	1 / tanf(0.5 * horzFov), 0.f, 0.f, 0.f,
+	0.f, 1 / tanf(0.5 * vertFov), 0.f, 0.f,
+	0.f, 0.f, zFar / zFar - zNear, -zFar * zNear / zFar - zNear,
+	0.f, 0.f, 1.f, 0.f;
 	return projection;
 	// *** END YOUR CODE ***
 }
@@ -240,20 +245,27 @@ void drawMesh(std::vector<unsigned char>& image,
 
 		// Work out the clip space coordinates, by multiplying by worldToClip and doing the 
 		// perspective divide.
-		Eigen::Vector4f vClip0 = Eigen::Vector4f::Zero();
-		Eigen::Vector4f vClip1 = Eigen::Vector4f::Zero();
-		Eigen::Vector4f vClip2 = Eigen::Vector4f::Zero();
+		Eigen::Vector4f vClip0 = worldToClip * vec3ToVec4(t.verts[0]);
+		vClip0 /= vClip0.w();
+		Eigen::Vector4f vClip1 = worldToClip * vec3ToVec4(t.verts[1]);
+		vClip1 /= vClip1.w();
+		Eigen::Vector4f vClip2 = worldToClip * vec3ToVec4(t.verts[2]);
+		vClip2 /= vClip2.w();
 
 		// Check that all 3 vertices are in the clip box (-1 to 1 in x, y and z) and if not,
 		// skip drawing this triangle.
 		// Hint: I've made a function outsideClipBox in LinAlg.hpp to help with this!
+		if (!outsideClipBox(vClip0) && !outsideClipBox(vClip1) && !outsideClipBox(vClip2))
+		{
+			continue;
+		}
 
 		// Work out the screen space coordinates based on the image height and width.
 		// Set the z component of each screen coordinate to be the clip-space z (for example
 		// t.screen[0].z() == vClip0.z());
-		t.screen[0] = Eigen::Vector3f::Zero();
-		t.screen[1] = Eigen::Vector3f::Zero();
-		t.screen[2] = Eigen::Vector3f::Zero();
+		t.screen[0] = Eigen::Vector3f(width * (vClip0.x() + 1) / 2, height * (vClip0.y() + 1) / 2, vClip0.z());
+		t.screen[1] = Eigen::Vector3f(width * (vClip1.x() + 1) / 2, height * (vClip1.y() + 1) / 2, vClip1.z());
+		t.screen[2] = Eigen::Vector3f(width * (vClip2.x() + 1) / 2, height * (vClip2.y() + 1) / 2, vClip2.z());
 		// *** END YOUR CODE ***
 
 		// transform the normals (using the inverse transpose of the upper 3x3 block)
@@ -306,9 +318,9 @@ int main()
 
 	// The main important task = set up the worldToCamera and worldToClip matrices here!
 	// Set up worldToCamera, based on cameraToWorld above
-	Eigen::Matrix4f worldToCamera;
+	Eigen::Matrix4f worldToCamera = cameraToWorld.inverse();
 	// Set up worldToClip, using the projection and worldToCamera matrices
-	Eigen::Matrix4f worldToClip;
+	Eigen::Matrix4f worldToClip = projection * worldToCamera;
 
 	// *** END YOUR CODE ***
 
