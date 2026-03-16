@@ -11,8 +11,11 @@
 Eigen::Vector3f reflect(const Eigen::Vector3f& incoming, const Eigen::Vector3f& normal)
 {
 	// *** YOUR CODE HERE ***
+	Eigen::Vector3f Nincoming = incoming.normalized();
+	Eigen::Vector3f NNormal = normal.normalized();
+	Eigen::Vector3f reflected = Nincoming + fabs(Nincoming.dot(NNormal)) * 2 * NNormal;
 	// replace this with the reflected vector.
-	return Eigen::Vector3f::Zero();
+	return reflected;
 	// *** END YOUR CODE ***
 }
 
@@ -30,16 +33,16 @@ float phongSpecularTerm(const Eigen::Vector3f& incomingLightDir, const Eigen::Ve
 {
 	// *** YOUR CODE HERE ***
 	// Find the reflected direction using the reflect function
-	Eigen::Vector3f reflectionDir = Eigen::Vector3f::Zero();
+	Eigen::Vector3f reflectionDir = reflect(incomingLightDir, normal);
 
 	// Find dot product between reflected and view directions.
-	float reflectDotNorm = 0.f;
+	float reflectDotNorm = reflectionDir.dot(viewDir);
 
 	// Make sure dot product is non-negative (if it's less than 0, set it to 0!)
-	reflectDotNorm = 0.f;
+	reflectDotNorm = ((reflectDotNorm < 0) ? 0 : reflectDotNorm);
 
 	// Finally, raise to specular exponent and return.
-	return 0.f;
+	return powf(reflectDotNorm, exponent);
 	// *** END YOUR CODE ***
 }
 
@@ -57,15 +60,18 @@ float blinnPhongSpecularTerm(const Eigen::Vector3f& incomingLightDir, const Eige
 {
 	// *** YOUR CODE HERE ***
 	// Find the half-vector (average of view dir and light dir)
-	Eigen::Vector3f halfVec = Eigen::Vector3f::Zero();
+	Eigen::Vector3f Nincoming = -incomingLightDir.normalized();
+	Eigen::Vector3f Nview = viewDir.normalized();
+	Eigen::Vector3f halfVec = (Nincoming + Nview) / Eigen::Vector3f{Nincoming + Nview}.norm();
 
 	// Find dot product of half-vector and normal.
-	float halfDotNorm = 0.f;
+	float halfDotNorm = halfVec.dot(normal.normalized());
 	
 	// Force the dot product to be non-negative (if <0, set to 0)
+	(halfDotNorm < 0) ? halfDotNorm = 0 : halfDotNorm;
 
 	//Return the dot product raised to the exponent
-	return 0.f;
+	return powf(halfDotNorm, exponent);
 	// *** END YOUR CODE ***
 }
 
