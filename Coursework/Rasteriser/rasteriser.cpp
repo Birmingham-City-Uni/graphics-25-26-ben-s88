@@ -18,7 +18,7 @@ struct Triangle {
 };
 
 
-Eigen::Matrix4f projectionMatrix(int height, int width, float horzFov = 70.f * M_PI / 180.f, float zFar = 10.f, float zNear = 0.1f)
+Eigen::Matrix4f projectionMatrix(int height, int width, float horzFov = 70.f * M_PI / 180.f, float zFar = 100.f, float zNear = 0.1f)
 {
 	float vertFov = horzFov * float(height) / width;
 	Eigen::Matrix4f projection;
@@ -236,7 +236,7 @@ int main()
 	Eigen::Matrix4f projection = projectionMatrix(height, width);
 
 	// This matrix rotates the camera, tilting it down, then translates it up to make it look down on the scene.
-	Eigen::Matrix4f cameraToWorld = translationMatrix(Eigen::Vector3f(0.f, 0.8f, 0.f)) * rotateXMatrix(0.4f);
+	Eigen::Matrix4f cameraToWorld = translationMatrix(Eigen::Vector3f(0.f, 0.f, 0.f)) * rotateXMatrix(5 * M_PI / 180);
 
 	Eigen::Vector3f camWorldPos = (cameraToWorld * Eigen::Vector4f(0, 0, 0, 1)).block<3, 1>(0, 0);
 
@@ -248,12 +248,20 @@ int main()
     
 	std::vector<std::unique_ptr<Light>> lights;
 	lights.emplace_back(new AmbientLight(Eigen::Vector3f(0.1f, 0.1f, 0.1f)));
-	lights.emplace_back(new DirectionalLight(Eigen::Vector3f(0.6f, 0.6f, .6f), Eigen::Vector3f(-1.f, 2.f, 0.0f)));
+	lights.emplace_back(new DirectionalLight(Eigen::Vector3f(0.6f, 0.6f, .6f), Eigen::Vector3f(0.f, 2.f, -1.0f)));
+	lights.emplace_back(new SpotLight(Eigen::Vector3f(10.f, 10.f, 10.f), Eigen::Vector3f(2.f, 1.f, 4.9f), Eigen::Vector3f(-1.f, 0.f, 5.f), 100));
 
 	Mesh JamesMesh = loadMeshFile("../../Models/JamesExport2.obj");
+	Mesh groundMesh = loadMeshFile("../../Models/CarPark.obj");
+
+	Eigen::Matrix4f groundTransform;
+	groundTransform = translationMatrix(Eigen::Vector3f(0.f, -1.f, 4.f)) * scaleMatrix(0.5f) ;
+	drawMesh(imageBuffer, zBuffer, groundMesh, Eigen::Vector3f(1.f, 0.1f, 0.1f),
+		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
+		groundTransform, worldToClip, lights, width, height);
 
 	Eigen::Matrix4f jamesTransform;
-	jamesTransform = translationMatrix(Eigen::Vector3f(0.f, .3f, 1.f)) * scaleMatrix(0.5) * rotateYMatrix(0 * M_PI / 180);
+	jamesTransform = translationMatrix(Eigen::Vector3f(1.2f, -0.6f, 6.f)) * scaleMatrix(0.5) * rotateYMatrix(190 * M_PI / 180);
 	drawMesh(imageBuffer, zBuffer, JamesMesh, Eigen::Vector3f(0.f, 0.5f, 0.8f),
 		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
 		jamesTransform, worldToClip, lights, width, height);
