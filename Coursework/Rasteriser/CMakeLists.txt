@@ -10,7 +10,10 @@ include_directories(../../3rdParty/eigen-3.4.0)
 add_executable(rasteriser
     rasteriser.cpp
     mesh.hpp
-    )
+    image.hpp
+    light.hpp
+    linAlg.hpp
+    shading.hpp)
 
 
 target_link_libraries(rasteriser 

@@ -262,7 +262,7 @@ int main()
 
 	// *** END YOUR CODE ***
 
-	std::string bunnyFilename = "../models/stanford_bunny_texmapped.obj";
+	std::string bunnyFilename = "../models/JamesExport.obj";
 	std::string planeFilename = "../models/plane.obj";
 
 	// Subtask 4: Try re-rendering your image with different lighting setups, and specular exponents, and see how it changes!
