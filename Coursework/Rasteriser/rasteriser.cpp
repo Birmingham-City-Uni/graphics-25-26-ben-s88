@@ -192,7 +192,7 @@ void drawMesh(std::vector<unsigned char>& image,
 
 		// Check that all 3 vertices are in the clip box (-1 to 1 in x, y and z) and if not,
 		// skip drawing this triangle.
-		//if (outsideClipBox(vClip0) || outsideClipBox(vClip1) || outsideClipBox(vClip2)) continue;
+		if (outsideClipBox(vClip0) && outsideClipBox(vClip1) && outsideClipBox(vClip2)) continue;
 
 		// Work out the screen space coordinates based on the image height and width.
 		t.screen[0] = Eigen::Vector3f((vClip0.x() + 1.0f) * width / 2, (-vClip0.y() + 1.0f) * height / 2, vClip0.z());
@@ -212,12 +212,44 @@ void drawMesh(std::vector<unsigned char>& image,
 	}
 }
 
+void doSSAA(std::vector<uint8_t>& imgBuffer, int height, int width, std::vector<uint8_t>& outputBuffer)
+{
+	for (int y = 0; y < height; ++y)
+	{
+		for (int x = 0; x < width; ++x)
+		{
+			if (x % 2 == 0 && y % 2 == 0)
+			{
+				int pixelIdx = x + y * width;
+
+				int r = getPixel(imgBuffer, x, y, width, height).r + getPixel(imgBuffer, x + 1, y, width, height).r + getPixel(imgBuffer, x, y + 1, width, height).r + getPixel(imgBuffer, x + 1, y + 1, width, height).r;
+				r /= 4;
+				int g = getPixel(imgBuffer, x, y, width, height).g + getPixel(imgBuffer, x + 1, y, width, height).g + getPixel(imgBuffer, x, y + 1, width, height).g + getPixel(imgBuffer, x + 1, y + 1, width, height).g;
+				g /= 4;
+				int b = getPixel(imgBuffer, x, y, width, height).b + getPixel(imgBuffer, x + 1, y, width, height).b + getPixel(imgBuffer, x, y + 1, width, height).b + getPixel(imgBuffer, x + 1, y + 1, width, height).b;
+				b /= 4;
+				Color color{ r, g, b, 255 };
+				
+				setPixel(outputBuffer, x / 2, y / 2, width / 2, height / 2, color);
+			}
+		}
+	}
+}
+
 int main()
 {
 	std::string outputFilename = "output.png";
-
-	const int width = 1920, height = 1080;
+	int width = 1920, height = 1080;
+	int outputWidth = 1920, outputHeight = 1080;
 	const int nChannels = 4;
+	bool SSAA = false;
+
+	if (SSAA)
+	{
+		width *= 2;
+		height *= 2;
+	}
+	
 
 	// Set up an image buffer
 	std::vector<uint8_t> imageBuffer(height*width*nChannels);
@@ -266,11 +298,22 @@ int main()
 		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
 		jamesTransform, worldToClip, lights, width, height);
 
+	int errorCode = 0;
+	if (SSAA)
+	{
+		std::vector<uint8_t> outputBuffer(outputWidth * outputHeight * nChannels);
+		doSSAA(imageBuffer, height, width, outputBuffer);
+
+		errorCode = lodepng::encode(outputFilename, outputBuffer, outputWidth, outputHeight);
+	}
+	else
+	{
+		errorCode = lodepng::encode(outputFilename, imageBuffer, outputWidth, outputHeight);
+	}
     // **** End lovely rasteriser code ****
 
     // Save the image
-    int errorCode = 0;
-    errorCode = lodepng::encode(outputFilename, imageBuffer, width, height);
+    
     if (errorCode) { // check the error code, in case an error occurred.
         std::cout << "lodepng error encoding image: " << lodepng_error_text(errorCode) << std::endl;
         return errorCode;

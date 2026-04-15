@@ -1,0 +1,5 @@
+group scene and export as one mesh to import?
+
+blinn phong required?
+
+AA for rasteriser and raytracter

@@ -81,8 +81,8 @@ int main(int argc, char* argv[]) {
 
 	// Optional code: here's how to add the spot mesh to the scene, using a BVH
 	// Try enabling this and comparing it to the non-BVH version below!
-	Model spotModel("../models/spot.obj");
-	scene.renderables.push_back(std::make_shared<BVHNode>(spotModel, &spotShader, 4, rotateY(M_PI / 4.0f)));
+	Model spotModel("../../Models/JamesExport2.obj");
+	scene.renderables.push_back(std::make_shared<BVHNode>(spotModel, &spotShader, 4, uniformScale(0.8f) * rotateY(M_PI)));
 
 	// Here's how to add the mesh without using the BVH.
 	// Try comparing performance to the BVH version above.
