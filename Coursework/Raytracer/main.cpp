@@ -38,6 +38,56 @@ Eigen::Vector3f loadVec3FromConfig(const nlohmann::json& config)
 	return Eigen::Vector3f(config[0], config[1], config[2]);
 }
 
+struct Color {
+	uint8_t r, g, b, a;
+};
+
+
+void setPixel(std::vector<uint8_t>& image, int x, int y, int width, int height, const Color& color)
+{
+	int pixelIdx = x + y * width;
+	image[pixelIdx * 4 + 0] = color.r;
+	image[pixelIdx * 4 + 1] = color.g;
+	image[pixelIdx * 4 + 2] = color.b;
+	image[pixelIdx * 4 + 3] = color.a;
+}
+
+Color getPixel(const std::vector<uint8_t>& image, int x, int y, int width, int height)
+{
+	int pixelIdx = x + y * width;
+	Color color{
+		image[pixelIdx * 4 + 0],
+		image[pixelIdx * 4 + 1],
+		image[pixelIdx * 4 + 2],
+		image[pixelIdx * 4 + 3]
+	};
+	return color;
+}
+
+void doSSAA(std::vector<uint8_t>& imgBuffer, int height, int width, std::vector<uint8_t>& outputBuffer)
+{
+	for (int y = 0; y < height; ++y)
+	{
+		for (int x = 0; x < width; ++x)
+		{
+			if (x % 2 == 0 && y % 2 == 0)
+			{
+				int pixelIdx = x + y * width;
+
+				int r = getPixel(imgBuffer, x, y, width, height).r + getPixel(imgBuffer, x + 1, y, width, height).r + getPixel(imgBuffer, x, y + 1, width, height).r + getPixel(imgBuffer, x + 1, y + 1, width, height).r;
+				r /= 4;
+				int g = getPixel(imgBuffer, x, y, width, height).g + getPixel(imgBuffer, x + 1, y, width, height).g + getPixel(imgBuffer, x, y + 1, width, height).g + getPixel(imgBuffer, x + 1, y + 1, width, height).g;
+				g /= 4;
+				int b = getPixel(imgBuffer, x, y, width, height).b + getPixel(imgBuffer, x + 1, y, width, height).b + getPixel(imgBuffer, x, y + 1, width, height).b + getPixel(imgBuffer, x + 1, y + 1, width, height).b;
+				b /= 4;
+				Color color{ r, g, b, 255 };
+
+				setPixel(outputBuffer, x / 2, y / 2, width / 2, height / 2, color);
+			}
+		}
+	}
+}
+
 int main(int argc, char* argv[]) {
 
 	// *** Load the config file ***
@@ -173,12 +223,23 @@ int main(int argc, char* argv[]) {
 	std::cout << "Render duration " << std::chrono::duration_cast<std::chrono::milliseconds>(renderTime).count() * 1e-3f << " seconds." << std::endl;
 
 	// *** Save the output image ***
-	int errorCode;
-	errorCode = lodepng::encode(config["outputFilename"], outImage, pixWidth, pixHeight);
+	int errorCode = 0;
+	if (SSAA)
+	{
+		std::vector<uint8_t> outputBuffer(outputWidth * outputHeight * nChannels);
+		doSSAA(outImage, pixHeight, pixWidth, outputBuffer);
+
+		errorCode = lodepng::encode(config["outputFilename"], outputBuffer, outputWidth, outputHeight);
+	}
+	else
+	{
+		errorCode = lodepng::encode(config["outputFilename"], outImage, outputWidth, outputHeight);
+	}
+	/*errorCode = lodepng::encode(config["outputFilename"], outImage, pixWidth, pixHeight);
 	if (errorCode) { // check the error code, in case an error occurred.
 		std::cout << "lodepng error encoding image: " << lodepng_error_text(errorCode) << std::endl;
 		return errorCode;
-	}
+	}*/
 
 	return 0;
 }
