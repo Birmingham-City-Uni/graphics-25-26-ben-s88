@@ -42,9 +42,17 @@ int main(int argc, char* argv[]) {
 
 	// *** Load the config file ***
 	auto config = loadConfig("../config/config.json");
+	bool SSAA = false;
 
-	const int pixHeight = config["pixHeight"], pixWidth = config["pixWidth"];
+	int pixHeight = config["pixHeight"], pixWidth = config["pixWidth"];
+	int outputHeight = 1080, outputWidth = 1920;
 	const int nChannels = 4;
+
+	if (SSAA)
+	{
+		pixHeight *= 2;
+		pixWidth *= 2;
+	}
 
 	// *** Set up camera and output image ***
 	Camera cam(
@@ -64,15 +72,15 @@ int main(int argc, char* argv[]) {
 		lavender(178.f / 255.f, 164.f / 255.f, 212.f / 255.f);
 
 	// *** Load shaders and textures ***
-	std::vector<uint8_t> spotTexture;
+	std::vector<uint8_t> jamesTexture;
 	unsigned int width, height;
-	lodepng::decode(spotTexture, width, height, "../models/spot.png");
+	lodepng::decode(jamesTexture, width, height, "../../Models/james-sunderland/textures/JamesTextureAtlas.png");
 
 	LambertianShader redLambertianShader(red);
 	PhongShader bluePlasticShader(blue, Eigen::Vector3f(1.f, 1.f, 1.f), 100.f);
 	LambertianShader aquaLambertianShader(aqua);
 	LambertianShader lavenderLambertianShader(lavender);
-	TexturedLambertianShader spotShader(&spotTexture, width, height);
+	TexturedLambertianShader jamesShader(&jamesTexture, width, height);
 	MirrorShader mirrorShader;
 	TexCoordTestShader texCoordTestShader;
 
@@ -81,8 +89,14 @@ int main(int argc, char* argv[]) {
 
 	// Optional code: here's how to add the spot mesh to the scene, using a BVH
 	// Try enabling this and comparing it to the non-BVH version below!
-	Model spotModel("../../Models/JamesExport2.obj");
-	scene.renderables.push_back(std::make_shared<BVHNode>(spotModel, &spotShader, 4, uniformScale(0.8f) * rotateY(M_PI)));
+
+	Model groundModel("../../Models/CarPark.obj");
+	scene.renderables.push_back(std::make_shared<BVHNode>(groundModel, &bluePlasticShader, 4, makeTranslationMatrix(Eigen::Vector3f(0.f, -1.f, 0.f)) * uniformScale(0.5f)));
+
+	Model jamesModel("../../Models/JamesExport3.obj");
+	scene.renderables.push_back(std::make_shared<BVHNode>(jamesModel, &jamesShader, 4, makeTranslationMatrix(Eigen::Vector3f(0.f, 0.f, -3.0f)) * uniformScale(0.6f) * rotateY(M_PI)));
+	//1.2, -0.7 , 3
+	
 
 	// Here's how to add the mesh without using the BVH.
 	// Try comparing performance to the BVH version above.
