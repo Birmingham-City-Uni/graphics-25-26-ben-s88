@@ -18,7 +18,7 @@ struct Triangle {
 };
 
 
-Eigen::Matrix4f projectionMatrix(int height, int width, float horzFov = 70.f * M_PI / 180.f, float zFar = 100.f, float zNear = 0.1f)
+Eigen::Matrix4f projectionMatrix(int height, int width, float horzFov = 70.f * M_PI / 180.f, float zFar = 1000.f, float zNear = 0.1f)
 {
 	float vertFov = horzFov * float(height) / width;
 	Eigen::Matrix4f projection;
@@ -212,6 +212,213 @@ void drawMesh(std::vector<unsigned char>& image,
 	}
 }
 
+void drawTriangle(std::vector<uint8_t>& image, int width, int height, // textured
+	std::vector<float>& zBuffer,
+	const Triangle& t,
+	const std::vector<std::unique_ptr<Light>>& lights,
+	const Eigen::Vector3f& specularColor,
+	float specularExponent,
+	const Eigen::Vector3f& camWorldPos,
+	const std::vector<uint8_t>& albedoTexture, int texHeight, int texWidth)
+{
+	int minX, minY, maxX, maxY;
+	findScreenBoundingBox(t, width, height, minX, minY, maxX, maxY);
+
+	Eigen::Vector2f edge1 = v2(t.screen[2] - t.screen[0]);
+	Eigen::Vector2f edge2 = v2(t.screen[1] - t.screen[0]);
+	float triangleArea = 0.5f * vec2Cross(edge2, edge1);
+	if (triangleArea < 0) {
+		// Triangle is backfacing
+		// Exit and quit drawing!
+		return;
+	}
+
+	for (int x = minX; x <= maxX; ++x)
+		for (int y = minY; y <= maxY; ++y) {
+			Eigen::Vector2f p(x, y);
+
+			// Find sub-triangle areas
+			float a0 = 0.5f * fabsf(vec2Cross(v2(t.screen[1]) - v2(t.screen[2]), p - v2(t.screen[2])));
+			float a1 = 0.5f * fabsf(vec2Cross(v2(t.screen[0]) - v2(t.screen[2]), p - v2(t.screen[2])));
+			float a2 = 0.5f * fabsf(vec2Cross(v2(t.screen[0]) - v2(t.screen[1]), p - v2(t.screen[1])));
+
+			// find barycentrics
+			float b0 = a0 / triangleArea;
+			float b1 = a1 / triangleArea;
+			float b2 = a2 / triangleArea;
+
+			// If outside triangle, exit early
+			float sum = b0 + b1 + b2;
+			if (sum > 1.0001) {
+				continue;
+			}
+
+			Eigen::Vector3f worldP = t.verts[0] * b0 + t.verts[1] * b1 + t.verts[2] * b2;
+
+			float depth = t.screen[0].z() * b0 + t.screen[1].z() * b1 + t.screen[2].z() * b2;
+			int depthIdx = static_cast<int>(p.x()) + static_cast<int>(p.y()) * width;
+			if (depth > zBuffer[depthIdx]) continue;
+			zBuffer[depthIdx] = depth;
+
+			Eigen::Vector3f normP = t.norms[0] * b0 + t.norms[1] * b1 + t.norms[2] * b2;
+			normP.normalize();
+
+
+			Eigen::Vector2f texP = (t.texs[0] * b0) + (t.texs[1] * b1) + (t.texs[2] * b2);
+
+			texP.x() -= floorf(texP.x());
+			texP.y() -= floorf(texP.y());
+
+			// Convert this coordinate to a point in texture space
+			// To do so, multiply by the texWidth and texHeight to get to the correct range.
+			// Don't forget to flip the y coordinates! 
+			int texR = (1 - texP.y()) * texHeight;
+			int texC = texP.x() * texWidth;
+
+			// Handle the case where texR or texC end up outside the image!
+			// There are different ways you could do this - for example using 
+			// the modulo (%) operator to wrap around, or clamping to the edges.
+			// Write your own code below to do this - once you're done you should be sure 
+			// that 0 <= texC < texWidth and 0 <= texR < texHeight.
+			if (texR)
+			{
+				texR -= 1;
+			}
+			if (texC)
+			{
+				texC -= 1;
+			}
+
+			// Get the value from the texture (hint: use the getPixel function on the albedoTexture).
+			Color texColor = getPixel(albedoTexture, texC, texR, texWidth, texHeight); //get pixel of Ts
+
+			// Convert it into an Eigen::Vector3f as an albedo
+			// (Optional bonus task, if you checked out the slides on gamma correction:
+			// gamma correct this colour, so the texture doesn't appear overly bright.
+			// should you raise to the power 1/2.2, or 2.2?)
+			Eigen::Vector3f albedo;
+			albedo.x() = powf(texColor.r / 255.f, 2.2f);
+			albedo.y() = powf(texColor.g / 255.f, 2.2f);
+			albedo.z() = powf(texColor.b / 255.f, 2.2f);
+
+			// Work out colour at this position.
+			Eigen::Vector3f color = Eigen::Vector3f::Zero();
+
+			// Iterate over lights, and sum to find colour.
+			for (auto& light : lights) {
+
+				// Work out the contribution from this light source, and add it to the color variable.
+
+				// Work out the intensity of this light source, at the point worldP.
+				Eigen::Vector3f lightIntensity = light->getIntensityAt(worldP);
+
+				// We only need to do the following if the light isn't an ambient light.
+				if (light->getType() != Light::Type::AMBIENT) {
+
+					// Subtask 3: Work out correct inputs for the phongSpecularTerm function inside drawTriangle, and draw an image!
+					// *** YOUR CODE HERE ***
+					// Work out the incoming light dir (from the light into the surface point).
+					Eigen::Vector3f incomingLightDir = light->getDirection(worldP);
+					// Work out the view direction (from surface point towards camera). Make sure it's normalized!
+					Eigen::Vector3f viewDir = (camWorldPos - worldP).normalized();
+					// Find the specular term by calling phongSpecularTerm.
+					float specularTerm = blinnPhongSpecularTerm(incomingLightDir, normP, viewDir, specularExponent);
+					// *** END YOUR CODE ***
+
+					Eigen::Vector3f specularOut = specularColor * specularTerm;
+					specularOut = coeffWiseMultiply(specularOut, lightIntensity);
+
+					// Take the dot product of the normal with the light direction.
+					float dotProd = normP.dot(-incomingLightDir);
+
+					// We don't want negative light - if dot product less than 0, set it to 0.
+					dotProd = std::max(dotProd, 0.0f);
+
+					// Multiply the light intensity by the dot product.
+					Eigen::Vector3f diffuseOut = lightIntensity * dotProd;
+					diffuseOut = coeffWiseMultiply(diffuseOut, albedo);
+
+					// Add both diffuse and specular components to the colour.
+					color += specularOut;
+					color += diffuseOut;
+				}
+				else {
+					// Light is ambient - just multiply light intensity with albedo.
+					color += coeffWiseMultiply(lightIntensity, albedo);
+				}
+			}
+
+			Color c;
+			// Gamma-correcting colours.
+			c.r = std::min(powf(color.x(), 1 / 2.2f), 1.0f) * 255;
+			c.g = std::min(powf(color.y(), 1 / 2.2f), 1.0f) * 255;
+			c.b = std::min(powf(color.z(), 1 / 2.2f), 1.0f) * 255;
+
+			c.a = 255;
+
+			setPixel(image, x, y, width, height, c);
+			timesDraw++;
+		}
+}
+
+void drawMesh(std::vector<unsigned char>& image, // textured
+	std::vector<float>& zBuffer,
+	const Mesh& mesh,
+	const Eigen::Vector3f& specularColor,
+	float specularExponent,
+	const Eigen::Vector3f& camWorldPos,
+	const Eigen::Matrix4f& modelToWorld,
+	const Eigen::Matrix4f& worldToClip,
+	const std::vector<std::unique_ptr<Light>>& lights,
+	int width, int height,
+	const std::vector<uint8_t>& albedoTexture, int texHeight, int texWidth)
+{
+	for (int i = 0; i < mesh.vFaces.size(); ++i) {
+		Eigen::Vector3f
+			v0 = mesh.verts[mesh.vFaces[i][0]],
+			v1 = mesh.verts[mesh.vFaces[i][1]],
+			v2 = mesh.verts[mesh.vFaces[i][2]];
+		Eigen::Vector3f
+			n0 = mesh.norms[mesh.nFaces[i][0]],
+			n1 = mesh.norms[mesh.nFaces[i][1]],
+			n2 = mesh.norms[mesh.nFaces[i][2]];
+
+		Triangle t;
+		t.verts[0] = (modelToWorld * vec3ToVec4(v0)).block<3, 1>(0, 0);
+		t.verts[1] = (modelToWorld * vec3ToVec4(v1)).block<3, 1>(0, 0);
+		t.verts[2] = (modelToWorld * vec3ToVec4(v2)).block<3, 1>(0, 0);
+
+		// Work out the clip space coordinates, by multiplying by worldToClip and doing the 
+		// perspective divide.
+		Eigen::Vector4f vClip0 = worldToClip * modelToWorld * vec3ToVec4(v0);
+		vClip0 /= vClip0.w();
+		Eigen::Vector4f vClip1 = worldToClip * modelToWorld * vec3ToVec4(v1);
+		vClip1 /= vClip1.w();
+		Eigen::Vector4f vClip2 = worldToClip * modelToWorld * vec3ToVec4(v2);
+		vClip2 /= vClip2.w();
+
+		// Check that all 3 vertices are in the clip box (-1 to 1 in x, y and z) and if not,
+		// skip drawing this triangle.
+		if (outsideClipBox(vClip0) && outsideClipBox(vClip1) && outsideClipBox(vClip2)) continue;
+
+		// Work out the screen space coordinates based on the image height and width.
+		t.screen[0] = Eigen::Vector3f((vClip0.x() + 1.0f) * width / 2, (-vClip0.y() + 1.0f) * height / 2, vClip0.z());
+		t.screen[1] = Eigen::Vector3f((vClip1.x() + 1.0f) * width / 2, (-vClip1.y() + 1.0f) * height / 2, vClip1.z());
+		t.screen[2] = Eigen::Vector3f((vClip2.x() + 1.0f) * width / 2, (-vClip2.y() + 1.0f) * height / 2, vClip2.z());
+
+		// transform the normals (using the inverse transpose of the upper 3x3 block)
+		t.norms[0] = (modelToWorld.block<3, 3>(0, 0).inverse().transpose() * n0).normalized();
+		t.norms[1] = (modelToWorld.block<3, 3>(0, 0).inverse().transpose() * n1).normalized();
+		t.norms[2] = (modelToWorld.block<3, 3>(0, 0).inverse().transpose() * n2).normalized();
+
+		t.texs[0] = mesh.texs[mesh.tFaces[i][0]];
+		t.texs[1] = mesh.texs[mesh.tFaces[i][1]];
+		t.texs[2] = mesh.texs[mesh.tFaces[i][2]];
+
+		drawTriangle(image, width, height, zBuffer, t, lights, specularColor, specularExponent, camWorldPos, albedoTexture, texHeight, texWidth);
+	}
+}
+
 void doSSAA(std::vector<uint8_t>& imgBuffer, int height, int width, std::vector<uint8_t>& outputBuffer)
 {
 	for (int y = 0; y < height; ++y)
@@ -280,23 +487,41 @@ int main()
     
 	std::vector<std::unique_ptr<Light>> lights;
 	lights.emplace_back(new AmbientLight(Eigen::Vector3f(0.1f, 0.1f, 0.1f)));
-	lights.emplace_back(new DirectionalLight(Eigen::Vector3f(0.6f, 0.6f, .6f), Eigen::Vector3f(0.f, 2.f, -1.0f)));
+	//lights.emplace_back(new DirectionalLight(Eigen::Vector3f(0.6f, 0.6f, .6f), Eigen::Vector3f(0.f, 2.f, -1.0f)));
 	lights.emplace_back(new SpotLight(Eigen::Vector3f(10.f, 10.f, 10.f), Eigen::Vector3f(2.f, 1.f, 4.9f), Eigen::Vector3f(-1.f, 0.f, 5.f), 100));
 
-	Mesh JamesMesh = loadMeshFile("../../Models/JamesExport2.obj");
-	Mesh groundMesh = loadMeshFile("../../Models/CarPark.obj");
+	Mesh JamesMesh = loadMeshFile("../../Models/JamesExport3.obj");
+	std::vector<uint8_t> jamesTexture;
+	unsigned int jamesTexWidth, jamesTexHeight;
+	lodepng::decode(jamesTexture, jamesTexWidth, jamesTexHeight, "../../Models/JamesTextureAtlas.png");
+
+	Mesh groundMesh = loadMeshFile("../../Models/GroundExport.obj");
+	std::vector<uint8_t> groundTexture;
+	unsigned int groundTexWidth, groundTexHeight;
+	lodepng::decode(groundTexture, groundTexWidth, groundTexHeight, "../../textures/Pavement/worn_tile_floor_diff_4k.png");
+
+	Mesh planeMesh = loadMeshFile("../../Models/PlaneExport.obj");
+	std::vector<uint8_t> BGTexture;
+	unsigned int BGTexWidth, BGTexHeight;
+	lodepng::decode(BGTexture, BGTexWidth, BGTexHeight, "../../textures/SkyboxFlip.png");
 
 	Eigen::Matrix4f groundTransform;
-	groundTransform = translationMatrix(Eigen::Vector3f(0.f, -1.f, 4.f)) * scaleMatrix(0.5f) ;
-	drawMesh(imageBuffer, zBuffer, groundMesh, Eigen::Vector3f(1.f, 0.1f, 0.1f),
+	groundTransform = translationMatrix(Eigen::Vector3f(-0.5f, -1.2f, 3.f)) * scaleMatrix(0.8f) ;
+	drawMesh(imageBuffer, zBuffer, groundMesh,
 		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
-		groundTransform, worldToClip, lights, width, height);
+		groundTransform, worldToClip, lights, width, height, groundTexture, groundTexHeight, groundTexWidth);
 
 	Eigen::Matrix4f jamesTransform;
-	jamesTransform = translationMatrix(Eigen::Vector3f(1.2f, -0.6f, 6.f)) * scaleMatrix(0.5) * rotateYMatrix(190 * M_PI / 180);
-	drawMesh(imageBuffer, zBuffer, JamesMesh, Eigen::Vector3f(0.f, 0.5f, 0.8f),
+	jamesTransform = translationMatrix(Eigen::Vector3f(1.2f, -0.7f, 6.f)) * scaleMatrix(0.5) * rotateYMatrix(190 * M_PI / 180);
+	drawMesh(imageBuffer, zBuffer, JamesMesh,
 		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
-		jamesTransform, worldToClip, lights, width, height);
+		jamesTransform, worldToClip, lights, width, height, jamesTexture, jamesTexHeight, jamesTexWidth);
+
+	Eigen::Matrix4f BGTransform;
+	BGTransform = translationMatrix(Eigen::Vector3f(-6.5f, -0.5f, 10.f)) * scaleMatrix(11);
+	drawMesh(imageBuffer, zBuffer, planeMesh,
+		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
+		BGTransform, worldToClip, lights, width, height, BGTexture, BGTexHeight, BGTexWidth);
 
 	int errorCode = 0;
 	if (SSAA)

@@ -1,0 +1,23 @@
+# Blender 5.1.1 MTL File: 'None'
+# www.blender.org
+
+newmtl Material.001
+Ns 1000.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd F:/UNI WORK/graphics_programming/labsndwtnot/graphics-25-26-ben-s88/Coursework/textures/Road/asphalt_02_diff_4k.jpg
+map_Bump -bm 1.000000 F:/UNI WORK/graphics_programming/textures/asphalt_02_nor_gl_4k.png
+
+newmtl Material.002
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd F:/UNI WORK/graphics_programming/labsndwtnot/graphics-25-26-ben-s88/Coursework/textures/Pavement/worn_tile_floor_diff_4k.jpg
