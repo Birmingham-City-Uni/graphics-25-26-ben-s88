@@ -1,0 +1,14 @@
+# Blender 5.1.1 MTL File: 'None'
+# www.blender.org
+
+newmtl Material_#68
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd pontiac-ventura/textures/ventura_d.png
+map_Ns pontiac-ventura/textures/ventura_r.png
+map_refl pontiac-ventura/textures/ventura_m.png
+map_Ke pontiac-ventura/textures/ventura_e.png
+map_Bump -bm 1.000000 pontiac-ventura/textures/ventura_n.png

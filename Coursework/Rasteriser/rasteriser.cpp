@@ -50,7 +50,7 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 	const Triangle& t,
 	const std::vector<std::unique_ptr<Light>>& lights,
 	const Eigen::Vector3f& albedo, const Eigen::Vector3f& specularColor,
-	float specularExponent,
+	float specularExponent, uint8_t opacity,
 	const Eigen::Vector3f& camWorldPos)
 {
 	int minX, minY, maxX, maxY;
@@ -142,15 +142,37 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 				}
 			}
 
-			Color c;
+			Color cA;
 			// Gamma-correcting colours.
-			c.r = std::min(powf(color.x(), 1 / 2.2f), 1.0f) * 255;
-			c.g = std::min(powf(color.y(), 1 / 2.2f), 1.0f) * 255;
-			c.b = std::min(powf(color.z(), 1 / 2.2f), 1.0f) * 255;
+			cA.r = std::min(powf(color.x(), 1 / 2.2f), 1.0f) * 255;
+			cA.g = std::min(powf(color.y(), 1 / 2.2f), 1.0f) * 255;
+			cA.b = std::min(powf(color.z(), 1 / 2.2f), 1.0f) * 255;
+			cA.a = 255;
 
-			c.a = 255;
+			if (opacity < 255)
+			{
+				float opacityPercent = (opacity / 255.f);
 
-			setPixel(image, x, y, width, height, c);
+				cA.r *= opacityPercent;
+				cA.g *= opacityPercent;
+				cA.b *= opacityPercent;
+
+				Color cB = getPixel(image, x, y, width, height);
+				//Color cB{ 255, 0, 0, 255 };
+				cB.r *= 1 - opacityPercent;
+				cB.g *= 1 - opacityPercent;
+				cB.b *= 1 - opacityPercent;
+			
+				Color cOutput{};
+				cOutput.r =  std::min(cA.r + cB.r, 255);
+				cOutput.g =  std::min(cA.g + cB.g, 255);
+				cOutput.b =  std::min(cA.b + cB.b, 255);
+
+				setPixel(image, x, y, width, height, cOutput);
+			}
+			
+
+			setPixel(image, x, y, width, height, cA);
 			timesDraw++;
 		}
 }
@@ -159,7 +181,7 @@ void drawMesh(std::vector<unsigned char>& image,
 	std::vector<float>& zBuffer,
 	const Mesh& mesh,
 	const Eigen::Vector3f& albedo, const Eigen::Vector3f& specularColor,
-	float specularExponent,
+	float specularExponent, uint8_t opacity,
 	const Eigen::Vector3f& camWorldPos,
 	const Eigen::Matrix4f& modelToWorld,
 	const Eigen::Matrix4f& worldToClip,
@@ -208,7 +230,7 @@ void drawMesh(std::vector<unsigned char>& image,
 		t.texs[1] = mesh.texs[mesh.tFaces[i][1]];
 		t.texs[2] = mesh.texs[mesh.tFaces[i][2]];
 
-		drawTriangle(image, width, height, zBuffer, t, lights, albedo, specularColor, specularExponent, camWorldPos);
+		drawTriangle(image, width, height, zBuffer, t, lights, albedo, specularColor, specularExponent, opacity, camWorldPos);
 	}
 }
 
@@ -475,7 +497,7 @@ int main()
 	Eigen::Matrix4f projection = projectionMatrix(height, width);
 
 	// This matrix rotates the camera, tilting it down, then translates it up to make it look down on the scene.
-	Eigen::Matrix4f cameraToWorld = translationMatrix(Eigen::Vector3f(0.f, 0.f, 0.f)) * rotateXMatrix(5 * M_PI / 180);
+	Eigen::Matrix4f cameraToWorld = translationMatrix(Eigen::Vector3f(0.f, -.4f, 0.f)) * rotateXMatrix(0 * M_PI / 180);
 
 	Eigen::Vector3f camWorldPos = (cameraToWorld * Eigen::Vector4f(0, 0, 0, 1)).block<3, 1>(0, 0);
 
@@ -486,9 +508,9 @@ int main()
 	Eigen::Matrix4f worldToClip = projection * worldToCamera;
     
 	std::vector<std::unique_ptr<Light>> lights;
-	lights.emplace_back(new AmbientLight(Eigen::Vector3f(0.1f, 0.1f, 0.1f)));
+	lights.emplace_back(new AmbientLight(Eigen::Vector3f(0.2f, 0.2f, 0.2f)));
 	//lights.emplace_back(new DirectionalLight(Eigen::Vector3f(0.6f, 0.6f, .6f), Eigen::Vector3f(0.f, 2.f, -1.0f)));
-	lights.emplace_back(new SpotLight(Eigen::Vector3f(10.f, 10.f, 10.f), Eigen::Vector3f(2.f, 1.f, 4.9f), Eigen::Vector3f(-1.f, 0.f, 5.f), 100));
+	//lights.emplace_back(new SpotLight(Eigen::Vector3f(8.f, 8.f, 8.f), Eigen::Vector3f(2.f, 1.f, 4.9f), Eigen::Vector3f(-1.f, 0.f, 5.f), 180));
 
 	Mesh JamesMesh = loadMeshFile("../../Models/JamesExport3.obj");
 	std::vector<uint8_t> jamesTexture;
@@ -505,23 +527,52 @@ int main()
 	unsigned int BGTexWidth, BGTexHeight;
 	lodepng::decode(BGTexture, BGTexWidth, BGTexHeight, "../../textures/SkyboxFlip.png");
 
-	Eigen::Matrix4f groundTransform;
+	Mesh buildingMesh = loadMeshFile("../../Models/BuildingExport.obj");
+	std::vector<uint8_t> BDTexture;
+	unsigned int BDTexWidth, BDTexHeight;
+	lodepng::decode(BDTexture, BDTexWidth, BDTexHeight, "../../textures/Wall/grey_plaster_03_diff_1k.png");
+
+	Mesh carMesh = loadMeshFile("../../Models/CarExport.obj");
+	std::vector<uint8_t> carTexture;
+	unsigned int carTexWidth, carTexHeight;
+	lodepng::decode(carTexture, carTexWidth, carTexHeight, "../../Models/pontiac-ventura/textures/ventura_d.png");
+
+	Mesh carWindowMesh = loadMeshFile("../../Models/CarWindowExport.obj");
+
+	/*Eigen::Matrix4f groundTransform;
 	groundTransform = translationMatrix(Eigen::Vector3f(-0.5f, -1.2f, 3.f)) * scaleMatrix(0.8f) ;
 	drawMesh(imageBuffer, zBuffer, groundMesh,
 		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
 		groundTransform, worldToClip, lights, width, height, groundTexture, groundTexHeight, groundTexWidth);
 
 	Eigen::Matrix4f jamesTransform;
-	jamesTransform = translationMatrix(Eigen::Vector3f(1.2f, -0.7f, 6.f)) * scaleMatrix(0.5) * rotateYMatrix(190 * M_PI / 180);
+	jamesTransform = translationMatrix(Eigen::Vector3f(1.5f, -0.8f, 6.9f)) * scaleMatrix(0.7) * rotateYMatrix(190 * M_PI / 180);
 	drawMesh(imageBuffer, zBuffer, JamesMesh,
 		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
-		jamesTransform, worldToClip, lights, width, height, jamesTexture, jamesTexHeight, jamesTexWidth);
+		jamesTransform, worldToClip, lights, width, height, jamesTexture, jamesTexHeight, jamesTexWidth);*/
 
 	Eigen::Matrix4f BGTransform;
-	BGTransform = translationMatrix(Eigen::Vector3f(-6.5f, -0.5f, 10.f)) * scaleMatrix(11);
+	BGTransform = translationMatrix(Eigen::Vector3f(-6.5f, -0.3f, 10.f)) * scaleMatrix(11);
 	drawMesh(imageBuffer, zBuffer, planeMesh,
 		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
 		BGTransform, worldToClip, lights, width, height, BGTexture, BGTexHeight, BGTexWidth);
+
+	/*Eigen::Matrix4f BDTransform;
+	BDTransform = translationMatrix(Eigen::Vector3f(3.f, -1.2f, 5.2f)) * scaleMatrix(0.6);
+	drawMesh(imageBuffer, zBuffer, buildingMesh,
+		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
+		BDTransform, worldToClip, lights, width, height, BDTexture, BDTexHeight, BDTexWidth);*/
+
+	Eigen::Matrix4f carTransform;
+    carTransform = translationMatrix(Eigen::Vector3f(0.f, -0.5f, 3.f)) * scaleMatrix(0.5) * rotateYMatrix(45 * M_PI / 180);
+	/*drawMesh(imageBuffer, zBuffer, carMesh,
+		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
+		carTransform, worldToClip, lights, width, height, carTexture, carTexHeight, carTexWidth);*/
+
+	drawMesh(imageBuffer, zBuffer, carWindowMesh, // draw the mesh of the car window using the car transform
+		Eigen::Vector3f(1.0f, 1.0f, 1.0f),
+		Eigen::Vector3f::Ones() * 1.0f, 100.0f, 100, camWorldPos,
+		carTransform, worldToClip, lights, width, height);
 
 	int errorCode = 0;
 	if (SSAA)
