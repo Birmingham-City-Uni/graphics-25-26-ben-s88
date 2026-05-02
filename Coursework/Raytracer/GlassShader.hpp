@@ -8,9 +8,11 @@ class GlassShader : public Shader
 {
 private:
 	float _refractiveIndex;
+	Eigen::Vector3f _albedo;
+	int _opacity;
 public:
-	GlassShader(float refractiveIndex)
-		:_refractiveIndex(refractiveIndex)
+	GlassShader(float refractiveIndex = 1.f, Eigen::Vector3f albedo={0.f, 0.f, 0.f}, int opacity=0)
+		:_refractiveIndex(refractiveIndex), _albedo(albedo), _opacity(std::min(opacity, 255))
 	{
 	}
 
@@ -37,7 +39,13 @@ public:
 				lights, ambientLight,
 				currBounceCount + 1, maxBounces);
 		}
-
+		if (_opacity < 255)
+		{
+			float opacityPercent = (float)_opacity / 255;
+			color.x() = (_albedo.x() * opacityPercent) + (color.x() * (1.0f - opacityPercent));
+			color.y() = (_albedo.y() * opacityPercent) + (color.y() * (1.0f - opacityPercent));
+			color.z() = (_albedo.z() * opacityPercent) + (color.z() * (1.0f - opacityPercent));
+		}
 		return color;
 	}
 };

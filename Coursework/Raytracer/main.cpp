@@ -154,7 +154,7 @@ int main(int argc, char* argv[]) {
 	TexturedLambertianShader carShader(&carTexture, carTexWidth, carTexHeight);
 	MirrorShader mirrorShader;
 	TexCoordTestShader texCoordTestShader;
-	GlassShader glassShader(1.125f);
+	GlassShader glassShader(1.01f, Eigen::Vector3f(1.f, 1.f, 1.f) * 0.7f, 100);
 	// make transparent shader
 
 	// *** Set up scene ***
@@ -167,12 +167,12 @@ int main(int argc, char* argv[]) {
 	scene.renderables.push_back(std::make_shared<BVHNode>(groundModel, &groundShader, 4, makeTranslationMatrix(Eigen::Vector3f(1.f, -1.2f, 2.f))));
 
 	Model jamesModel("../../Models/JamesExport3.obj");
-	scene.renderables.push_back(std::make_shared<BVHNode>(jamesModel, &jamesShader, 4, makeTranslationMatrix(Eigen::Vector3f(1.4f, -0.6f, 7.4f)) * uniformScale(1.f) * rotateY(190 * M_PI / 180)));
+	scene.renderables.push_back(std::make_shared<BVHNode>(jamesModel, &jamesShader, 4, makeTranslationMatrix(Eigen::Vector3f(1.4f, -0.7f, 8.5f)) * uniformScale(1.f) * rotateY(190 * M_PI / 180)));
 	//1.2, -0.7 , 3
 	
 	Model BGModel("../../Models/PlaneExport2.obj");
 	//scene.renderables.push_back(std::make_shared<BVHNode>(BGModel, &BGShader, ~SHADOW_BITMASK, 4, makeTranslationMatrix(Eigen::Vector3f(-7.4f, 0.1f, 12.f)) * uniformScale(12) * rotateY(0 * M_PI / 180)));
-	scene.renderables.push_back(std::make_shared<Mesh>(&BGShader, &BGModel, nullptr, true, true, ~SHADOW_BITMASK));
+	scene.renderables.push_back(std::make_shared<Mesh>(&BGShader, &BGModel, nullptr, true, true, VISIBLE_BITMASK));
 	scene.renderables.back()->modelToWorld(makeTranslationMatrix(Eigen::Vector3f(-7.5f, 0.1f, 12.f)) * uniformScale(12) * rotateY(0 * M_PI / 180));
 
 	Model BDModel("../../Models/BuildingExport.obj");
@@ -183,7 +183,9 @@ int main(int argc, char* argv[]) {
 	scene.renderables.push_back(std::make_shared<BVHNode>(carModel, &carShader, 4, carTransform));
 
 	Model carWindowModel("../../Models/CarWindowExport.obj");
-	scene.renderables.push_back(std::make_shared<BVHNode>(carWindowModel, &glassShader, 4, carTransform));
+	//scene.renderables.push_back(std::make_shared<BVHNode>(carWindowModel, &glassShader, 4, carTransform));
+	scene.renderables.push_back(std::make_shared<Mesh>(&glassShader, &carWindowModel, nullptr, true, true, VISIBLE_BITMASK));
+	scene.renderables.back()->modelToWorld(carTransform);
 
 	// Here's how to add the mesh without using the BVH.
 	// Try comparing performance to the BVH version above.
@@ -192,11 +194,11 @@ int main(int argc, char* argv[]) {
 	//scene.renderables.back()->modelToWorld(rotateY(M_PI / 4.0f));
 
 	// *** Add lights to scene ***
-	Eigen::Vector3f ambientLight(.3f, .3f, .3f);
+	Eigen::Vector3f ambientLight(.5f, .5f, .5f);
 
 	std::vector<std::unique_ptr<Light>> lightSources;
-	//lightSources.push_back(std::make_unique<PointLight>(Eigen::Vector3f(-.3f, -.4f, 4.7f), 3.f * Eigen::Vector3f(1.f, 1.f, 1.f)));
-	lightSources.push_back(std::make_unique<DirectionalLight>(Eigen::Vector3f(-0.5f, -1.5f, -1.f), 1.f * Eigen::Vector3f(1.f, 1.f, 1.f)));
+	//lightSources.push_back(std::make_unique<PointLight>(Eigen::Vector3f(-.4f, -.4f, 4.f), 3.f * Eigen::Vector3f(1.f, 1.f, 1.f)));
+	lightSources.push_back(std::make_unique<DirectionalLight>(Eigen::Vector3f(-0.5f, -1.5f, -1.f), 0.7f * Eigen::Vector3f(1.f, 1.f, 1.f)));
 
 	// *** Render the scene ***
 
