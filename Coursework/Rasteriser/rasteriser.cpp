@@ -159,20 +159,23 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 
 				Color cB = getPixel(image, x, y, width, height);
 				//Color cB{ 255, 0, 0, 255 };
-				cB.r *= 1 - opacityPercent;
-				cB.g *= 1 - opacityPercent;
-				cB.b *= 1 - opacityPercent;
+				cB.r *= 1.0f - opacityPercent;
+				cB.g *= 1.f - opacityPercent;
+				cB.b *= 1.f - opacityPercent;
 			
-				Color cOutput{};
-				cOutput.r =  std::min(cA.r + cB.r, 255);
-				cOutput.g =  std::min(cA.g + cB.g, 255);
-				cOutput.b =  std::min(cA.b + cB.b, 255);
+				Color cOutput{0, 0, 0, 255};
+				cOutput.r =  std::min((int)cA.r + (int)cB.r, 255);
+				cOutput.g =  std::min((int)cA.g + (int)cB.g, 255);
+				cOutput.b =  std::min((int)cA.b + (int)cB.b, 255);
 
 				setPixel(image, x, y, width, height, cOutput);
 			}
-			
+			else
+			{
+				setPixel(image, x, y, width, height, cA);
+			}
 
-			setPixel(image, x, y, width, height, cA);
+			
 			timesDraw++;
 		}
 }
@@ -497,7 +500,7 @@ int main()
 	Eigen::Matrix4f projection = projectionMatrix(height, width);
 
 	// This matrix rotates the camera, tilting it down, then translates it up to make it look down on the scene.
-	Eigen::Matrix4f cameraToWorld = translationMatrix(Eigen::Vector3f(0.f, -.4f, 0.f)) * rotateXMatrix(0 * M_PI / 180);
+	Eigen::Matrix4f cameraToWorld = translationMatrix(Eigen::Vector3f(0.f, -.3f, 0.f)) * rotateXMatrix(0 * M_PI / 180);
 
 	Eigen::Vector3f camWorldPos = (cameraToWorld * Eigen::Vector4f(0, 0, 0, 1)).block<3, 1>(0, 0);
 
@@ -509,15 +512,15 @@ int main()
     
 	std::vector<std::unique_ptr<Light>> lights;
 	lights.emplace_back(new AmbientLight(Eigen::Vector3f(0.2f, 0.2f, 0.2f)));
-	//lights.emplace_back(new DirectionalLight(Eigen::Vector3f(0.6f, 0.6f, .6f), Eigen::Vector3f(0.f, 2.f, -1.0f)));
-	//lights.emplace_back(new SpotLight(Eigen::Vector3f(8.f, 8.f, 8.f), Eigen::Vector3f(2.f, 1.f, 4.9f), Eigen::Vector3f(-1.f, 0.f, 5.f), 180));
+	lights.emplace_back(new DirectionalLight(Eigen::Vector3f(0.3f, 0.3f, .3f), Eigen::Vector3f(0.f, -1.f, -1.0f)));
+	lights.emplace_back(new SpotLight(Eigen::Vector3f(10.f, 10.f, 10.f), Eigen::Vector3f(2.4f, 0.3f, 5.f), Eigen::Vector3f(-1.f, -0.5f, 0.2f), 40 * M_PI / 180));
 
 	Mesh JamesMesh = loadMeshFile("../../Models/JamesExport3.obj");
 	std::vector<uint8_t> jamesTexture;
 	unsigned int jamesTexWidth, jamesTexHeight;
 	lodepng::decode(jamesTexture, jamesTexWidth, jamesTexHeight, "../../Models/JamesTextureAtlas.png");
 
-	Mesh groundMesh = loadMeshFile("../../Models/GroundExport.obj");
+	Mesh groundMesh = loadMeshFile("../../Models/CarPark.obj");
 	std::vector<uint8_t> groundTexture;
 	unsigned int groundTexWidth, groundTexHeight;
 	lodepng::decode(groundTexture, groundTexWidth, groundTexHeight, "../../textures/Pavement/worn_tile_floor_diff_4k.png");
@@ -539,8 +542,8 @@ int main()
 
 	Mesh carWindowMesh = loadMeshFile("../../Models/CarWindowExport.obj");
 
-	/*Eigen::Matrix4f groundTransform;
-	groundTransform = translationMatrix(Eigen::Vector3f(-0.5f, -1.2f, 3.f)) * scaleMatrix(0.8f) ;
+	Eigen::Matrix4f groundTransform;
+	groundTransform = translationMatrix(Eigen::Vector3f(1.f, -1.2f, 2.f)) * scaleMatrix(0.8f) ;
 	drawMesh(imageBuffer, zBuffer, groundMesh,
 		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
 		groundTransform, worldToClip, lights, width, height, groundTexture, groundTexHeight, groundTexWidth);
@@ -549,7 +552,7 @@ int main()
 	jamesTransform = translationMatrix(Eigen::Vector3f(1.5f, -0.8f, 6.9f)) * scaleMatrix(0.7) * rotateYMatrix(190 * M_PI / 180);
 	drawMesh(imageBuffer, zBuffer, JamesMesh,
 		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
-		jamesTransform, worldToClip, lights, width, height, jamesTexture, jamesTexHeight, jamesTexWidth);*/
+		jamesTransform, worldToClip, lights, width, height, jamesTexture, jamesTexHeight, jamesTexWidth);
 
 	Eigen::Matrix4f BGTransform;
 	BGTransform = translationMatrix(Eigen::Vector3f(-6.5f, -0.3f, 10.f)) * scaleMatrix(11);
@@ -557,22 +560,24 @@ int main()
 		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
 		BGTransform, worldToClip, lights, width, height, BGTexture, BGTexHeight, BGTexWidth);
 
-	/*Eigen::Matrix4f BDTransform;
+	Eigen::Matrix4f BDTransform;
 	BDTransform = translationMatrix(Eigen::Vector3f(3.f, -1.2f, 5.2f)) * scaleMatrix(0.6);
 	drawMesh(imageBuffer, zBuffer, buildingMesh,
 		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
-		BDTransform, worldToClip, lights, width, height, BDTexture, BDTexHeight, BDTexWidth);*/
+		BDTransform, worldToClip, lights, width, height, BDTexture, BDTexHeight, BDTexWidth);
 
 	Eigen::Matrix4f carTransform;
-    carTransform = translationMatrix(Eigen::Vector3f(0.f, -0.5f, 3.f)) * scaleMatrix(0.5) * rotateYMatrix(45 * M_PI / 180);
-	/*drawMesh(imageBuffer, zBuffer, carMesh,
+    carTransform = translationMatrix(Eigen::Vector3f(0.f, -0.9f, 4.f)) * scaleMatrix(0.7) * rotateYMatrix(-25 * M_PI / 180);
+	drawMesh(imageBuffer, zBuffer, carMesh,
 		Eigen::Vector3f::Ones() * 1.0f, 100.f, camWorldPos,
-		carTransform, worldToClip, lights, width, height, carTexture, carTexHeight, carTexWidth);*/
+		carTransform, worldToClip, lights, width, height, carTexture, carTexHeight, carTexWidth);
 
 	drawMesh(imageBuffer, zBuffer, carWindowMesh, // draw the mesh of the car window using the car transform
 		Eigen::Vector3f(1.0f, 1.0f, 1.0f),
 		Eigen::Vector3f::Ones() * 1.0f, 100.0f, 100, camWorldPos,
 		carTransform, worldToClip, lights, width, height);
+
+	//drawPointLights(imageBuffer, width, height, lights);
 
 	int errorCode = 0;
 	if (SSAA)

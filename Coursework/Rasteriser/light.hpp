@@ -178,9 +178,12 @@ public:
 		if (surfaceDir.dot(_direction) < _cosAngle) {
 			return Eigen::Vector3f::Zero();
 		}
+		auto pixPos = (surfaceDir.dot(_direction) - _cosAngle);
+		pixPos /= 1.0f - _cosAngle;
+		pixPos = powf(pixPos, 2.5f);
 
 		float distance = (_location - surfaceLocation).norm();
-		return _intensity / (distance * distance);
+		return (_intensity * pixPos) / (distance * distance);
 	}
 
 	virtual Type getType() override
