@@ -31,8 +31,8 @@ public:
 		int pixY = static_cast<int>((1.f - tex.y()) * texHeight_);
 		pixX = std::max(pixX, 0);
 		pixY = std::max(pixY, 0);
-		pixX = std::min(pixX, texWidth_);
-		pixY = std::min(pixY, texHeight_);
+		pixX = std::min(pixX, texWidth_ - 1);
+		pixY = std::min(pixY, texHeight_ - 1);
 
 		albedo.x() = static_cast<float>((*albedoTexture_)[(pixX + texWidth_ * pixY) * 4 + 0]) / 255.f;
 		albedo.y() = static_cast<float>((*albedoTexture_)[(pixX + texWidth_*pixY)*4 + 1]) / 255.f;
