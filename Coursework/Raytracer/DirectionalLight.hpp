@@ -9,7 +9,7 @@ public:
 	DirectionalLight(const Eigen::Vector3f& direction, const Eigen::Vector3f& intensity)
 		:direction_(direction.normalized()), intensity_(intensity)
 	{}
-
+	Type type = DIRECTIONAL;
 
 	virtual bool visibilityCheck(const Eigen::Vector3f& location, const Renderable* renderable) const override
 	{

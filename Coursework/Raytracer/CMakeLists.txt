@@ -22,6 +22,7 @@ set(LIGHTS_SOURCE_GROUP
     Light.hpp
     PointLight.hpp
     DirectionalLight.hpp
+    AreaLight.hpp
 )
 
 set(SHADERS_SOURCE_GROUP
@@ -32,6 +33,7 @@ set(SHADERS_SOURCE_GROUP
     MirrorShader.hpp
     TexCoordTestShader.hpp
     GlassShader.hpp
+    TexturedPhongShader.hpp
 )
 
 source_group("Header Files\\Entities" FILES ${ENTITIES_SOURCE_GROUP})

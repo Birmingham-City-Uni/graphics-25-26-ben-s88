@@ -18,6 +18,7 @@
 #include "TexCoordTestShader.hpp"
 #include "Model.hpp"
 #include "GlassShader.hpp"
+#include "TexturedPhongShader.hpp"
 #include <fstream>
 
 /// <summary>
@@ -94,6 +95,8 @@ int main(int argc, char* argv[]) {
 	// *** Load the config file ***
 	auto config = loadConfig("../config/config.json");
 	bool SSAA = false;
+	bool multiSample = true;
+	int multiSampleGridSize = 2;
 
 	int pixHeight = config["pixHeight"], pixWidth = config["pixWidth"];
 	int outputHeight = 1080, outputWidth = 1920;
@@ -147,11 +150,11 @@ int main(int argc, char* argv[]) {
 	PhongShader bluePlasticShader(blue, Eigen::Vector3f(1.f, 1.f, 1.f), 100.f);
 	LambertianShader aquaLambertianShader(aqua);
 	LambertianShader lavenderLambertianShader(lavender);
-	TexturedLambertianShader jamesShader(&jamesTexture, jamesWidth, jamesHeight);
-	TexturedLambertianShader groundShader(&groundTexture, groundTexWidth, groundTexHeight);
-	TexturedLambertianShader BGShader(&BGTexture, BGTexWidth, BGTexHeight);
-	TexturedLambertianShader BDShader(&BDTexture, BDTexWidth, BDTexHeight);
-	TexturedLambertianShader carShader(&carTexture, carTexWidth, carTexHeight);
+	TexturedPhongShader jamesShader(&jamesTexture, jamesWidth, jamesHeight);
+	TexturedPhongShader groundShader(&groundTexture, groundTexWidth, groundTexHeight);
+	TexturedPhongShader BGShader(&BGTexture, BGTexWidth, BGTexHeight);
+	TexturedPhongShader BDShader(&BDTexture, BDTexWidth, BDTexHeight);
+	TexturedPhongShader carShader(&carTexture, carTexWidth, carTexHeight);
 	MirrorShader mirrorShader;
 	TexCoordTestShader texCoordTestShader;
 	GlassShader glassShader(1.01f, Eigen::Vector3f(1.f, 1.f, 1.f) * 0.7f, 100);
@@ -168,7 +171,6 @@ int main(int argc, char* argv[]) {
 
 	Model jamesModel("../../Models/JamesExport3.obj");
 	scene.renderables.push_back(std::make_shared<BVHNode>(jamesModel, &jamesShader, 4, makeTranslationMatrix(Eigen::Vector3f(1.4f, -0.7f, 8.5f)) * uniformScale(1.f) * rotateY(190 * M_PI / 180)));
-	//1.2, -0.7 , 3
 	
 	Model BGModel("../../Models/PlaneExport2.obj");
 	//scene.renderables.push_back(std::make_shared<BVHNode>(BGModel, &BGShader, ~SHADOW_BITMASK, 4, makeTranslationMatrix(Eigen::Vector3f(-7.4f, 0.1f, 12.f)) * uniformScale(12) * rotateY(0 * M_PI / 180)));
@@ -194,10 +196,10 @@ int main(int argc, char* argv[]) {
 	//scene.renderables.back()->modelToWorld(rotateY(M_PI / 4.0f));
 
 	// *** Add lights to scene ***
-	Eigen::Vector3f ambientLight(.5f, .5f, .5f);
+	Eigen::Vector3f ambientLight(.3f, .3f, .3f);
 
 	std::vector<std::unique_ptr<Light>> lightSources;
-	//lightSources.push_back(std::make_unique<PointLight>(Eigen::Vector3f(-.4f, -.4f, 4.f), 3.f * Eigen::Vector3f(1.f, 1.f, 1.f)));
+	lightSources.push_back(std::make_unique<PointLight>(Eigen::Vector3f(0.f, 0.f, 4.f), 3.f * Eigen::Vector3f(1.f, 1.f, 1.f)));
 	lightSources.push_back(std::make_unique<DirectionalLight>(Eigen::Vector3f(-0.5f, -1.5f, -1.f), 0.7f * Eigen::Vector3f(1.f, 1.f, 1.f)));
 
 	// *** Render the scene ***
@@ -220,7 +222,54 @@ int main(int argc, char* argv[]) {
 	scene.intersect(ray, 1e-6f, 1e6f, hitInfo, VISIBLE_BITMASK);
 	float x = hitInfo.hitT;
 
+	if (multiSample)
+	{
+	int samplesPerPixel = pow(multiSampleGridSize, 2);
+	#pragma omp parallel for
+	for (int y = 0; y < pixHeight; ++y) {
+		for (int x = 0; x < pixWidth; ++x) {
+			Eigen::Vector3f colorToAverage{ 0, 0, 0};
+			for (auto const &ray : cam.getRays(x, scanlines[y], multiSampleGridSize))
+			{
+			HitInfo hitInfo;
+			if (scene.intersect(ray, 1e-6f, 1e6f, hitInfo, VISIBLE_BITMASK)) {
+				Eigen::Vector3f color = hitInfo.shader->getColor(
+					hitInfo, &scene,
+					lightSources, ambientLight,
+					0, config["maxBounces"]);
 
+				color.x() = std::min(color.x(), 1.f);
+				color.y() = std::min(color.y(), 1.f);
+				color.z() = std::min(color.z(), 1.f);
+
+
+				colorToAverage.x() += color.x() * 255;
+				colorToAverage.y() += color.y() * 255;
+				colorToAverage.z() += color.z() * 255;
+			}
+			else {
+				continue;
+			}
+			}
+
+			colorToAverage.x() /= samplesPerPixel;
+			colorToAverage.y() /= samplesPerPixel;
+			colorToAverage.z() /= samplesPerPixel;
+
+			int line = (pixHeight - scanlines[y]) - 1;
+			outImage[(x + line * pixWidth) * nChannels + 0] = colorToAverage.x();
+			outImage[(x + line * pixWidth) * nChannels + 1] = colorToAverage.y();
+			outImage[(x + line * pixWidth) * nChannels + 2] = colorToAverage.z();
+			outImage[(x + line * pixWidth) * nChannels + 3] = 255;
+			
+		}
+		if (omp_get_thread_num() == omp_get_num_threads() - 1) {
+			std::clog << "\rScanlines remaining: " << (pixHeight - y) << ' ' << std::flush;
+		}
+	}
+	}
+	else
+	{
 	#pragma omp parallel for
 	for (int y = 0; y < pixHeight; ++y) {
 		for (int x = 0; x < pixWidth; ++x) {
@@ -254,7 +303,7 @@ int main(int argc, char* argv[]) {
 		if (omp_get_thread_num() == omp_get_num_threads()-1) {
 			std::clog << "\rScanlines remaining: " << (pixHeight - y) << ' ' << std::flush;
 		}
-
+	}
 	}
 
 	auto renderTime = std::chrono::steady_clock::now() - startTime;
