@@ -41,7 +41,44 @@ public:
 		albedo.y() = static_cast<float>((*albedoTexture_)[(pixX + texWidth_ * pixY) * 4 + 1]) / 255.f;
 		albedo.z() = static_cast<float>((*albedoTexture_)[(pixX + texWidth_ * pixY) * 4 + 2]) / 255.f;
 
-		Eigen::Vector3f color = coefftWiseMul(albedo, ambientLight);
+		float ambientlightInfluence = 1.f;
+
+		if (shadowTest_)
+		{
+			Eigen::Vector3f normal = hitInfo.normal.normalized();
+
+			Eigen::Vector3f upVec = std::abs(normal.z()) < 0.999f
+				? Eigen::Vector3f(0, 0, 1)
+				: Eigen::Vector3f(1, 0, 0);
+
+			Eigen::Vector3f surfaceDirection1 = normal.cross(upVec).normalized();
+			Eigen::Vector3f surfaceDirection2 = normal.cross(surfaceDirection1);
+
+			float spread = 0.3f; // spread factor (tweak this)
+
+			std::vector<Eigen::Vector3f> dirs = {
+				normal, (normal + spread * surfaceDirection1).normalized(), (normal - spread * surfaceDirection1).normalized(),
+				(normal + spread * surfaceDirection2).normalized(), (normal - spread * surfaceDirection2).normalized()
+			};
+
+			float occlusion = 0.0f;
+			float maxT = 0.5f;
+
+			for (Eigen::Vector3f& rayDirection : dirs)
+			{
+				Ray ray;
+				ray.origin = hitInfo.location + normal * 1e-4f;
+				ray.direction = rayDirection;
+
+				HitInfo info;
+				if (scene->intersect(ray, 1e-4f, maxT, info, SHADOW_BITMASK)) {
+					occlusion += 1.0f;
+				}
+			}
+
+			ambientlightInfluence = 1.0f - (occlusion / dirs.size());
+		}
+		Eigen::Vector3f color = coefftWiseMul(albedo, ambientLight * ambientlightInfluence);
 
 		for (auto& light : lights) {
 			float influenceWeighted = 1.f;
@@ -70,6 +107,7 @@ public:
 				influenceWeighted = totalInfluence / pow(gridSize, 2);
 				
 			}
+
 			Eigen::Vector3f lightVec = light->getVecToLight(hitInfo.location);
 			float dotProd = std::max(lightVec.dot(hitInfo.normal), 0.f);
 			color += (dotProd * coefftWiseMul(light->getIntensity(hitInfo.location) * influenceWeighted, albedo));
