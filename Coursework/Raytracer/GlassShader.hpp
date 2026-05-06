@@ -11,7 +11,7 @@ private:
 	Eigen::Vector3f _albedo;
 	int _opacity;
 public:
-	GlassShader(float refractiveIndex = 1.f, Eigen::Vector3f albedo={0.f, 0.f, 0.f}, int opacity=0)
+	GlassShader(float refractiveIndex = 1.f, Eigen::Vector3f albedo = { 0.f, 0.f, 0.f }, int opacity = 0)
 		:_refractiveIndex(refractiveIndex), _albedo(albedo), _opacity(std::min(opacity, 255))
 	{
 	}

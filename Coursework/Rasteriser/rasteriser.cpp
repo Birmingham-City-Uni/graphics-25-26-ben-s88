@@ -474,7 +474,7 @@ int main()
 	int width = 1920, height = 1080;
 	int outputWidth = 1920, outputHeight = 1080;
 	const int nChannels = 4;
-	bool SSAA = false;
+	bool SSAA = true;
 
 	if (SSAA)
 	{

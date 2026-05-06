@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
 	// *** Load the config file ***
 	auto config = loadConfig("../config/config.json");
 	bool SSAA = false;
-	bool multiSample = false;
+	bool multiSample = true;
 	int multiSampleGridSize = 2; // size^2 samples per pixel
 
 	int pixHeight = config["pixHeight"], pixWidth = config["pixWidth"];
@@ -196,11 +196,11 @@ int main(int argc, char* argv[]) {
 	//scene.renderables.back()->modelToWorld(rotateY(M_PI / 4.0f));
 
 	// *** Add lights to scene ***
-	Eigen::Vector3f ambientLight(.5f, .5f, .5f);
+	Eigen::Vector3f ambientLight(.4f, .4f, .4f);
 
 	std::vector<std::unique_ptr<Light>> lightSources;
-	//lightSources.push_back(std::make_unique<PointLight>(Eigen::Vector3f(0.f, 0.f, 4.f), 3.f * Eigen::Vector3f(1.f, 1.f, 1.f)));
-	//lightSources.push_back(std::make_unique<DirectionalLight>(Eigen::Vector3f(-0.5f, -1.5f, -1.f), 0.7f * Eigen::Vector3f(1.f, 1.f, 1.f)));
+	lightSources.push_back(std::make_unique<PointLight>(Eigen::Vector3f(0.f, 1.f, 4.f), 2.5f * Eigen::Vector3f(1.f, 1.f, 1.f)));
+	lightSources.push_back(std::make_unique<DirectionalLight>(Eigen::Vector3f(-0.5f, -1.5f, -1.f), 0.7f * Eigen::Vector3f(1.f, 1.f, 1.f)));
 
 	// *** Render the scene ***
 
