@@ -22,7 +22,6 @@ set(LIGHTS_SOURCE_GROUP
     Light.hpp
     PointLight.hpp
     DirectionalLight.hpp
-    AreaLight.hpp
 )
 
 set(SHADERS_SOURCE_GROUP
